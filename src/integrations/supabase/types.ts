@@ -14,7 +14,159 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      animals: {
+        Row: {
+          birth_date: string | null
+          breed: string | null
+          created_at: string
+          id: string
+          identifier: string | null
+          lote: string | null
+          notes: string | null
+          origin: string | null
+          status: string
+          type: string
+          updated_at: string
+          user_id: string
+          weight_kg: number | null
+        }
+        Insert: {
+          birth_date?: string | null
+          breed?: string | null
+          created_at?: string
+          id?: string
+          identifier?: string | null
+          lote?: string | null
+          notes?: string | null
+          origin?: string | null
+          status?: string
+          type: string
+          updated_at?: string
+          user_id: string
+          weight_kg?: number | null
+        }
+        Update: {
+          birth_date?: string | null
+          breed?: string | null
+          created_at?: string
+          id?: string
+          identifier?: string | null
+          lote?: string | null
+          notes?: string | null
+          origin?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
+      market_prices: {
+        Row: {
+          created_at: string
+          id: string
+          price: number
+          product: string
+          reference_date: string
+          region: string
+          unit: string
+          variation: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          price: number
+          product: string
+          reference_date?: string
+          region: string
+          unit: string
+          variation?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          price?: number
+          product?: string
+          reference_date?: string
+          region?: string
+          unit?: string
+          variation?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          farm_name: string | null
+          full_name: string | null
+          id: string
+          region: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          farm_name?: string | null
+          full_name?: string | null
+          id: string
+          region?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          farm_name?: string | null
+          full_name?: string | null
+          id?: string
+          region?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sales: {
+        Row: {
+          buyer: string | null
+          category: string
+          created_at: string
+          id: string
+          item: string
+          notes: string | null
+          quantity: number
+          sale_date: string
+          total: number
+          unit: string | null
+          unit_price: number
+          user_id: string
+        }
+        Insert: {
+          buyer?: string | null
+          category: string
+          created_at?: string
+          id?: string
+          item: string
+          notes?: string | null
+          quantity?: number
+          sale_date?: string
+          total?: number
+          unit?: string | null
+          unit_price?: number
+          user_id: string
+        }
+        Update: {
+          buyer?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          item?: string
+          notes?: string | null
+          quantity?: number
+          sale_date?: string
+          total?: number
+          unit?: string | null
+          unit_price?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
