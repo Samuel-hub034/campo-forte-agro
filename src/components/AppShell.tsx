@@ -11,12 +11,12 @@ import { useAuth } from "@/lib/use-auth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const nav = [
+const nav: { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }[] = [
   { to: "/", label: "Painel", icon: LayoutDashboard, exact: true },
   { to: "/animais", label: "Rebanho", icon: Beef },
   { to: "/vendas", label: "Vendas", icon: Receipt },
   { to: "/precos", label: "Preços", icon: TrendingUp },
-] as const;
+];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { signOut, user } = useAuth();
