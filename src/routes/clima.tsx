@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { AppShell } from "@/components/AppShell";
+import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -145,14 +146,10 @@ function Weather() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Clima</h1>
-          <p className="text-sm text-muted-foreground">
-            Condições atuais e previsão para 7 dias.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Clima"
+        subtitle="Condições atuais e previsão para 7 dias"
+      />
 
       {/* Search */}
       <form

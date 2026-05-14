@@ -27,6 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Receipt, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
 
 export const Route = createFileRoute("/vendas")({
   component: () => (
@@ -76,22 +77,20 @@ function Sales() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Vendas</h1>
-          <p className="text-sm text-muted-foreground">
-            Total acumulado: <span className="font-semibold">{brl(total)}</span>
-          </p>
-        </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="lg" className="h-12">
-              <Plus className="h-4 w-4" /> Registrar
-            </Button>
-          </DialogTrigger>
-          <NewSaleDialog onDone={() => setOpen(false)} />
-        </Dialog>
-      </div>
+      <PageHeader
+        title="Vendas"
+        subtitle={`Total acumulado: ${brl(total)}`}
+        right={
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="lg" className="h-12">
+                <Plus className="h-4 w-4" /> Registrar
+              </Button>
+            </DialogTrigger>
+            <NewSaleDialog onDone={() => setOpen(false)} />
+          </Dialog>
+        }
+      />
 
       {isLoading ? (
         <div className="h-32 animate-pulse rounded-2xl bg-muted" />

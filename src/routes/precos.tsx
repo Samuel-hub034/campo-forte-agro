@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { RequireAuth } from "@/components/RequireAuth";
 import { AppShell } from "@/components/AppShell";
+import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowDownRight, ArrowUpRight, TrendingUp } from "lucide-react";
 import { useState } from "react";
@@ -49,27 +50,25 @@ function Prices() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Preços de mercado</h1>
-          <p className="text-sm text-muted-foreground">
-            Cotações por região para apoiar suas decisões de venda.
-          </p>
-        </div>
-        <Select value={region} onValueChange={setRegion}>
-          <SelectTrigger className="h-11 w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Todas">Todas as regiões</SelectItem>
-            {regions.map((r) => (
-              <SelectItem key={r} value={r}>
-                {r}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <PageHeader
+        title="Preços de mercado"
+        subtitle="Cotações por região para apoiar suas decisões de venda"
+        right={
+          <Select value={region} onValueChange={setRegion}>
+            <SelectTrigger className="h-11 w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Todas">Todas as regiões</SelectItem>
+              {regions.map((r) => (
+                <SelectItem key={r} value={r}>
+                  {r}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
       {isLoading ? (
         <div className="h-32 animate-pulse rounded-2xl bg-muted" />

@@ -27,6 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Beef, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
 
 export const Route = createFileRoute("/animais")({
   component: () => (
@@ -72,22 +73,20 @@ function Animals() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Rebanho</h1>
-          <p className="text-sm text-muted-foreground">
-            {animals.length} animais cadastrados
-          </p>
-        </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button size="lg" className="h-12">
-              <Plus className="h-4 w-4" /> Novo
-            </Button>
-          </DialogTrigger>
-          <NewAnimalDialog onDone={() => setOpen(false)} />
-        </Dialog>
-      </div>
+      <PageHeader
+        title="Rebanho"
+        subtitle={`${animals.length} animais cadastrados`}
+        right={
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="lg" className="h-12">
+                <Plus className="h-4 w-4" /> Novo
+              </Button>
+            </DialogTrigger>
+            <NewAnimalDialog onDone={() => setOpen(false)} />
+          </Dialog>
+        }
+      />
 
       {isLoading ? (
         <div className="h-32 animate-pulse rounded-2xl bg-muted" />
