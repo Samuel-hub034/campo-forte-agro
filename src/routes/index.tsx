@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
 import { RequireAuth } from "@/components/RequireAuth";
@@ -13,6 +14,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   AlertCircle,
+  ChevronRight,
 } from "lucide-react";
 import {
   Area,
@@ -23,7 +25,6 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
   component: () => (
@@ -43,16 +44,43 @@ const brl = (v: number) =>
 
 function Dashboard() {
   const { user } = useAuth();
+  const qc = useQueryClient();
+
+  // Realtime: invalidate dashboard when sales change
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("dashboard-sales")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "sales", filter: `user_id=eq.${user.id}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["dashboard"] });
+          qc.invalidateQueries({ queryKey: ["sales"] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "animals", filter: `user_id=eq.${user.id}` },
+        () => qc.invalidateQueries({ queryKey: ["dashboard"] })
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, qc]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard", user?.id],
     enabled: !!user,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
     queryFn: async () => {
       const start = new Date();
       start.setDate(1);
       const startIso = start.toISOString().slice(0, 10);
 
-      const [salesRes, animalsRes, pricesRes, monthSalesRes] = await Promise.all([
+      const [salesRes, animalsRes, pricesRes, recentRes] = await Promise.all([
         supabase.from("sales").select("*").gte("sale_date", startIso),
         supabase.from("animals").select("id,status,type"),
         supabase
@@ -62,9 +90,9 @@ function Dashboard() {
           .limit(5),
         supabase
           .from("sales")
-          .select("sale_date,total")
-          .gte("sale_date", startIso)
-          .order("sale_date"),
+          .select("*")
+          .order("sale_date", { ascending: false })
+          .limit(5),
       ]);
 
       const monthSales = salesRes.data ?? [];
@@ -77,7 +105,7 @@ function Dashboard() {
         .reduce((s, r) => s + Number(r.quantity ?? 0), 0);
 
       const byDay = new Map<string, number>();
-      (monthSalesRes.data ?? []).forEach((r) => {
+      monthSales.forEach((r) => {
         byDay.set(r.sale_date, (byDay.get(r.sale_date) ?? 0) + Number(r.total));
       });
       const chart = Array.from(byDay.entries())
@@ -94,6 +122,7 @@ function Dashboard() {
         herd: animalsRes.data?.length ?? 0,
         prices: pricesRes.data ?? [],
         chart,
+        recent: recentRes.data ?? [],
       };
     },
   });
@@ -107,27 +136,33 @@ function Dashboard() {
         </p>
       </div>
 
-      {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi
+          to="/relatorios"
+          search={{ tipo: "faturamento" }}
           icon={<DollarSign className="h-5 w-5" />}
           label="Faturamento do mês"
           value={brl(data?.revenue ?? 0)}
           tone="primary"
         />
         <Kpi
+          to="/relatorios"
+          search={{ tipo: "animais" }}
           icon={<Beef className="h-5 w-5" />}
           label="Animais vendidos"
           value={String(data?.animalsSold ?? 0)}
           tone="earth"
         />
         <Kpi
+          to="/relatorios"
+          search={{ tipo: "graos" }}
           icon={<Receipt className="h-5 w-5" />}
           label="Sacas vendidas"
           value={String(data?.grainsSold ?? 0)}
           tone="secondary"
         />
         <Kpi
+          to="/animais"
           icon={<TrendingUp className="h-5 w-5" />}
           label="Rebanho atual"
           value={String(data?.herd ?? 0)}
@@ -135,10 +170,15 @@ function Dashboard() {
         />
       </div>
 
-      {/* Chart */}
       <Card className="rounded-2xl">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Vendas do mês</CardTitle>
+          <Link
+            to="/relatorios"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            Ver relatório
+          </Link>
         </CardHeader>
         <CardContent className="h-64">
           {isLoading ? (
@@ -182,14 +222,49 @@ function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Prices snapshot */}
+      {/* Últimas vendas */}
+      <Card className="rounded-2xl">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Últimas vendas</CardTitle>
+          <Link to="/vendas" className="text-sm font-medium text-primary hover:underline">
+            Ver todas
+          </Link>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {(data?.recent ?? []).length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              Nenhuma venda ainda.
+            </p>
+          ) : (
+            (data?.recent ?? []).map((s) => (
+              <Link
+                key={s.id}
+                to="/vendas"
+                className="flex items-center justify-between rounded-lg border border-border p-3 transition-colors hover:bg-accent/50"
+              >
+                <div>
+                  <div className="font-medium">{s.item}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {Number(s.quantity)} {s.unit || "un"} •{" "}
+                    {new Date(s.sale_date).toLocaleDateString("pt-BR")}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-primary">
+                    {brl(Number(s.total))}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </Link>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
       <Card className="rounded-2xl">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">Preços de mercado</CardTitle>
-          <Link
-            to="/precos"
-            className="text-sm font-medium text-primary hover:underline"
-          >
+          <Link to="/precos" className="text-sm font-medium text-primary hover:underline">
             Ver todos
           </Link>
         </CardHeader>
@@ -234,11 +309,15 @@ function Kpi({
   label,
   value,
   tone,
+  to,
+  search,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   tone: "primary" | "earth" | "secondary" | "success";
+  to: string;
+  search?: Record<string, string>;
 }) {
   const map = {
     primary: "bg-primary/10 text-primary",
@@ -247,13 +326,15 @@ function Kpi({
     success: "bg-success/10 text-success",
   } as const;
   return (
-    <Card className="rounded-2xl">
-      <CardContent className="p-4">
-        <div className={`mb-2 inline-flex rounded-lg p-2 ${map[tone]}`}>{icon}</div>
-        <div className="text-xs text-muted-foreground">{label}</div>
-        <div className="text-lg font-bold leading-tight">{value}</div>
-      </CardContent>
-    </Card>
+    <Link to={to as never} search={search as never}>
+      <Card className="rounded-2xl transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0">
+        <CardContent className="p-4">
+          <div className={`mb-2 inline-flex rounded-lg p-2 ${map[tone]}`}>{icon}</div>
+          <div className="text-xs text-muted-foreground">{label}</div>
+          <div className="text-lg font-bold leading-tight">{value}</div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 

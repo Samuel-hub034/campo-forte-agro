@@ -6,6 +6,8 @@ import {
   TrendingUp,
   LogOut,
   Sprout,
+  CloudSun,
+  FileBarChart,
 } from "lucide-react";
 import { useAuth } from "@/lib/use-auth";
 import { Button } from "@/components/ui/button";
@@ -15,7 +17,9 @@ const nav: { to: string; label: string; icon: typeof LayoutDashboard; exact?: bo
   { to: "/", label: "Painel", icon: LayoutDashboard, exact: true },
   { to: "/animais", label: "Rebanho", icon: Beef },
   { to: "/vendas", label: "Vendas", icon: Receipt },
+  { to: "/clima", label: "Clima", icon: CloudSun },
   { to: "/precos", label: "Preços", icon: TrendingUp },
+  { to: "/relatorios", label: "Relatórios", icon: FileBarChart },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -25,7 +29,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-0">
-      {/* Top bar */}
       <header className="sticky top-0 z-30 border-b border-border bg-card/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <Link to="/" className="flex items-center gap-2">
@@ -40,7 +43,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </Link>
 
-          {/* Desktop nav */}
           <nav className="hidden items-center gap-1 md:flex">
             {nav.map((n) => {
               const active = n.exact
@@ -80,8 +82,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
 
-      {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-4 border-t border-border bg-card md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-6 border-t border-border bg-card md:hidden">
         {nav.map((n) => {
           const active = n.exact
             ? location.pathname === n.to
@@ -91,7 +92,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               key={n.to}
               to={n.to as never}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 py-3 text-[11px] font-medium",
+                "flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-medium",
                 active ? "text-primary" : "text-muted-foreground"
               )}
             >

@@ -10,14 +10,21 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VendasRouteImport } from './routes/vendas'
+import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as PrecosRouteImport } from './routes/precos'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ClimaRouteImport } from './routes/clima'
 import { Route as AnimaisRouteImport } from './routes/animais'
 import { Route as IndexRouteImport } from './routes/index'
 
 const VendasRoute = VendasRouteImport.update({
   id: '/vendas',
   path: '/vendas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelatoriosRoute = RelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrecosRoute = PrecosRouteImport.update({
@@ -28,6 +35,11 @@ const PrecosRoute = PrecosRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClimaRoute = ClimaRouteImport.update({
+  id: '/clima',
+  path: '/clima',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnimaisRoute = AnimaisRouteImport.update({
@@ -44,38 +56,68 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/animais': typeof AnimaisRoute
+  '/clima': typeof ClimaRoute
   '/login': typeof LoginRoute
   '/precos': typeof PrecosRoute
+  '/relatorios': typeof RelatoriosRoute
   '/vendas': typeof VendasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/animais': typeof AnimaisRoute
+  '/clima': typeof ClimaRoute
   '/login': typeof LoginRoute
   '/precos': typeof PrecosRoute
+  '/relatorios': typeof RelatoriosRoute
   '/vendas': typeof VendasRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/animais': typeof AnimaisRoute
+  '/clima': typeof ClimaRoute
   '/login': typeof LoginRoute
   '/precos': typeof PrecosRoute
+  '/relatorios': typeof RelatoriosRoute
   '/vendas': typeof VendasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/animais' | '/login' | '/precos' | '/vendas'
+  fullPaths:
+    | '/'
+    | '/animais'
+    | '/clima'
+    | '/login'
+    | '/precos'
+    | '/relatorios'
+    | '/vendas'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/animais' | '/login' | '/precos' | '/vendas'
-  id: '__root__' | '/' | '/animais' | '/login' | '/precos' | '/vendas'
+  to:
+    | '/'
+    | '/animais'
+    | '/clima'
+    | '/login'
+    | '/precos'
+    | '/relatorios'
+    | '/vendas'
+  id:
+    | '__root__'
+    | '/'
+    | '/animais'
+    | '/clima'
+    | '/login'
+    | '/precos'
+    | '/relatorios'
+    | '/vendas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnimaisRoute: typeof AnimaisRoute
+  ClimaRoute: typeof ClimaRoute
   LoginRoute: typeof LoginRoute
   PrecosRoute: typeof PrecosRoute
+  RelatoriosRoute: typeof RelatoriosRoute
   VendasRoute: typeof VendasRoute
 }
 
@@ -86,6 +128,13 @@ declare module '@tanstack/react-router' {
       path: '/vendas'
       fullPath: '/vendas'
       preLoaderRoute: typeof VendasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relatorios': {
+      id: '/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof RelatoriosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/precos': {
@@ -100,6 +149,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clima': {
+      id: '/clima'
+      path: '/clima'
+      fullPath: '/clima'
+      preLoaderRoute: typeof ClimaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/animais': {
@@ -122,8 +178,10 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnimaisRoute: AnimaisRoute,
+  ClimaRoute: ClimaRoute,
   LoginRoute: LoginRoute,
   PrecosRoute: PrecosRoute,
+  RelatoriosRoute: RelatoriosRoute,
   VendasRoute: VendasRoute,
 }
 export const routeTree = rootRouteImport
