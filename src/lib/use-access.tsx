@@ -18,12 +18,14 @@ export function useAccess() {
       const isAdmin = roles.includes("admin");
       const sub = subRes.data;
       const now = Date.now();
-      let status: "ativa" | "atrasada" | "vencida" | "pendente" = "pendente";
+      type Status = "ativa" | "atrasada" | "vencida" | "pendente";
+      let status: Status = "pendente";
       if (sub) {
-        if (sub.status === "ativa" && sub.expires_at && new Date(sub.expires_at).getTime() < now) {
+        const raw = sub.status as Status;
+        if (raw === "ativa" && sub.expires_at && new Date(sub.expires_at).getTime() < now) {
           status = "vencida";
         } else {
-          status = sub.status as typeof status;
+          status = raw;
         }
       }
       return {
