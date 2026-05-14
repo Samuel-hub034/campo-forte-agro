@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Download, FileBarChart } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 
 const searchSchema = z.object({
   tipo: z.enum(["faturamento", "animais", "graos", "todos"]).optional().default("todos"),
@@ -140,15 +141,11 @@ function Reports() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Relatório de {tipoLabel[tipo]}</h1>
-          <p className="text-sm text-muted-foreground">
-            Filtre, visualize e exporte seus dados.
-          </p>
-        </div>
-        <FileBarChart className="h-8 w-8 text-primary" />
-      </div>
+      <PageHeader
+        title={`Relatório de ${tipoLabel[tipo]}`}
+        subtitle="Filtre, visualize e exporte seus dados"
+        right={<FileBarChart className="h-8 w-8 text-primary" />}
+      />
 
       {/* Filters */}
       <Card className="rounded-2xl">
