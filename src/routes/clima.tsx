@@ -145,14 +145,10 @@ function Weather() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Clima</h1>
-          <p className="text-sm text-muted-foreground">
-            Condições atuais e previsão para 7 dias.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Clima"
+        subtitle="Condições atuais e previsão para 7 dias"
+      />
 
       {/* Search */}
       <form
