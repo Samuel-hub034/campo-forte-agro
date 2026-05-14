@@ -8,12 +8,26 @@ import {
   Sprout,
   CloudSun,
   FileBarChart,
+  Shield,
 } from "lucide-react";
+import { useState } from "react";
 import { useAuth } from "@/lib/use-auth";
+import { useAccess } from "@/lib/use-access";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const nav: { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }[] = [
+const baseNav: { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean }[] = [
   { to: "/", label: "Painel", icon: LayoutDashboard, exact: true },
   { to: "/animais", label: "Rebanho", icon: Beef },
   { to: "/vendas", label: "Vendas", icon: Receipt },
@@ -24,8 +38,14 @@ const nav: { to: string; label: string; icon: typeof LayoutDashboard; exact?: bo
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { signOut, user } = useAuth();
+  const { isAdmin } = useAccess();
   const navigate = useNavigate();
   const location = useLocation();
+  const [confirmOut, setConfirmOut] = useState(false);
+
+  const nav = isAdmin
+    ? [...baseNav, { to: "/admin", label: "Admin", icon: Shield }]
+    : baseNav;
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-0">
@@ -36,10 +56,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Sprout className="h-5 w-5" />
             </span>
             <div className="leading-tight">
-              <div className="text-base font-bold">AgroGestor</div>
-              <div className="text-[11px] text-muted-foreground">
-                {user?.email}
+              <div className="flex items-center gap-1.5 text-base font-bold">
+                AgroGestor
+                {isAdmin && (
+                  <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                    ADMIN
+                  </Badge>
+                )}
               </div>
+              <div className="text-[11px] text-muted-foreground">{user?.email}</div>
             </div>
           </Link>
 
@@ -69,10 +94,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={async () => {
-              await signOut();
-              navigate({ to: "/login" });
-            }}
+            onClick={() => setConfirmOut(true)}
+            aria-label="Sair da conta"
           >
             <LogOut className="h-4 w-4" />
             <span className="ml-1 hidden sm:inline">Sair</span>
@@ -82,7 +105,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-30 grid grid-cols-6 border-t border-border bg-card md:hidden">
+      <nav
+        className={cn(
+          "fixed bottom-0 left-0 right-0 z-30 grid border-t border-border bg-card md:hidden",
+          isAdmin ? "grid-cols-7" : "grid-cols-6"
+        )}
+      >
         {nav.map((n) => {
           const active = n.exact
             ? location.pathname === n.to
@@ -102,6 +130,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           );
         })}
       </nav>
+
+      <AlertDialog open={confirmOut} onOpenChange={setConfirmOut}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair da conta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você precisará fazer login novamente para acessar o sistema. Se
+              só quer voltar ao painel, clique em Cancelar e use o botão
+              Voltar ou o menu.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                await signOut();
+                navigate({ to: "/login" });
+              }}
+            >
+              Sim, sair
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

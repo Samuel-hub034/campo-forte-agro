@@ -14,7 +14,9 @@ import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as PrecosRouteImport } from './routes/precos'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ClimaRouteImport } from './routes/clima'
+import { Route as AssinaturaRouteImport } from './routes/assinatura'
 import { Route as AnimaisRouteImport } from './routes/animais'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 
 const VendasRoute = VendasRouteImport.update({
@@ -42,9 +44,19 @@ const ClimaRoute = ClimaRouteImport.update({
   path: '/clima',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AssinaturaRoute = AssinaturaRouteImport.update({
+  id: '/assinatura',
+  path: '/assinatura',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnimaisRoute = AnimaisRouteImport.update({
   id: '/animais',
   path: '/animais',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -55,7 +67,9 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/animais': typeof AnimaisRoute
+  '/assinatura': typeof AssinaturaRoute
   '/clima': typeof ClimaRoute
   '/login': typeof LoginRoute
   '/precos': typeof PrecosRoute
@@ -64,7 +78,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/animais': typeof AnimaisRoute
+  '/assinatura': typeof AssinaturaRoute
   '/clima': typeof ClimaRoute
   '/login': typeof LoginRoute
   '/precos': typeof PrecosRoute
@@ -74,7 +90,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/animais': typeof AnimaisRoute
+  '/assinatura': typeof AssinaturaRoute
   '/clima': typeof ClimaRoute
   '/login': typeof LoginRoute
   '/precos': typeof PrecosRoute
@@ -85,7 +103,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/animais'
+    | '/assinatura'
     | '/clima'
     | '/login'
     | '/precos'
@@ -94,7 +114,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/animais'
+    | '/assinatura'
     | '/clima'
     | '/login'
     | '/precos'
@@ -103,7 +125,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/animais'
+    | '/assinatura'
     | '/clima'
     | '/login'
     | '/precos'
@@ -113,7 +137,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   AnimaisRoute: typeof AnimaisRoute
+  AssinaturaRoute: typeof AssinaturaRoute
   ClimaRoute: typeof ClimaRoute
   LoginRoute: typeof LoginRoute
   PrecosRoute: typeof PrecosRoute
@@ -158,11 +184,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClimaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/assinatura': {
+      id: '/assinatura'
+      path: '/assinatura'
+      fullPath: '/assinatura'
+      preLoaderRoute: typeof AssinaturaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/animais': {
       id: '/animais'
       path: '/animais'
       fullPath: '/animais'
       preLoaderRoute: typeof AnimaisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -177,7 +217,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   AnimaisRoute: AnimaisRoute,
+  AssinaturaRoute: AssinaturaRoute,
   ClimaRoute: ClimaRoute,
   LoginRoute: LoginRoute,
   PrecosRoute: PrecosRoute,
@@ -187,3 +229,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
