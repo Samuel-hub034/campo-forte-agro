@@ -85,9 +85,16 @@ function SaudeAnimal() {
     symptoms: "",
   });
 
+  type VetInput = {
+    species: string;
+    breed?: string;
+    sex: "macho" | "femea" | "desconhecido";
+    ageMonths?: number;
+    weightKg?: number;
+    symptoms: string;
+  };
   const mut = useMutation({
-    mutationFn: (input: Parameters<typeof askVetAssistant>[0]["data"]) =>
-      ask({ data: input }),
+    mutationFn: (input: VetInput) => ask({ data: input }),
     onError: (e: Error) => toast.error(e.message),
   });
 
