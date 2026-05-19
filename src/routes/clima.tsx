@@ -234,20 +234,38 @@ function Weather() {
         <CardContent className="space-y-1">
           {daily?.time?.map((t: string, i: number) => {
             const di = weatherInfo(daily.weather_code[i]);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const dayDate = new Date(t + "T00:00:00");
+            const diffDays = Math.round(
+              (dayDate.getTime() - today.getTime()) / 86400000,
+            );
+            const weekday = dayDate.toLocaleDateString("pt-BR", {
+              weekday: "long",
+            });
+            const label =
+              diffDays <= 0 ? "Hoje" : diffDays === 1 ? "Amanhã" : weekday;
+            const isToday = diffDays <= 0;
             return (
               <div
                 key={t}
-                className="flex items-center justify-between rounded-lg px-2 py-2 hover:bg-accent/30"
+                className={`flex items-center justify-between rounded-lg px-3 py-2.5 ${
+                  isToday
+                    ? "bg-primary/10 ring-1 ring-primary/30"
+                    : "hover:bg-accent/30"
+                }`}
               >
                 <div className="flex items-center gap-3">
-                  <di.Icon className="h-6 w-6 text-primary" />
+                  <di.Icon
+                    className={`h-7 w-7 ${isToday ? "text-primary" : "text-muted-foreground"}`}
+                  />
                   <div>
-                    <div className="font-medium capitalize">
-                      {i === 0
-                        ? "Hoje"
-                        : new Date(t).toLocaleDateString("pt-BR", { weekday: "long" })}
+                    <div className="font-semibold capitalize leading-tight">
+                      {label}
                     </div>
-                    <div className="text-xs text-muted-foreground">{di.label}</div>
+                    <div className="text-xs capitalize text-muted-foreground">
+                      {diffDays <= 1 ? weekday : di.label}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 text-sm">
