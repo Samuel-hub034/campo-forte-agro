@@ -32,6 +32,7 @@ const baseNav: { to: string; label: string; icon: typeof LayoutDashboard; exact?
   { to: "/", label: "Painel", icon: LayoutDashboard, exact: true },
   { to: "/animais", label: "Rebanho", icon: Beef },
   { to: "/vendas", label: "Vendas", icon: Receipt },
+  { to: "/saude", label: "Saúde", icon: Stethoscope },
   { to: "/clima", label: "Clima", icon: CloudSun },
   { to: "/precos", label: "Preços", icon: TrendingUp },
   { to: "/relatorios", label: "Relatórios", icon: FileBarChart },
@@ -44,9 +45,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [confirmOut, setConfirmOut] = useState(false);
 
-  const nav = isAdmin
-    ? [...baseNav, { to: "/admin", label: "Admin", icon: Shield }]
-    : baseNav;
+  const nav = useMemo(
+    () =>
+      isAdmin
+        ? [...baseNav, { to: "/admin", label: "Admin", icon: Shield }]
+        : baseNav,
+    [isAdmin],
+  );
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-0">
