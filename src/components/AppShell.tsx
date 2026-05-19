@@ -114,7 +114,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <nav
         className={cn(
           "fixed bottom-0 left-0 right-0 z-30 grid border-t border-border bg-card md:hidden",
-          isAdmin ? "grid-cols-7" : "grid-cols-6"
+          isAdmin ? "grid-cols-8" : "grid-cols-7"
         )}
       >
         {nav.map((n) => {
