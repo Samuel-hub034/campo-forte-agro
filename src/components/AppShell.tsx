@@ -9,8 +9,9 @@ import {
   CloudSun,
   FileBarChart,
   Shield,
+  Stethoscope,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/use-auth";
 import { useAccess } from "@/lib/use-access";
 import { Button } from "@/components/ui/button";
