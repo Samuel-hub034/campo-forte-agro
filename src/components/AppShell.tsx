@@ -9,8 +9,9 @@ import {
   CloudSun,
   FileBarChart,
   Shield,
+  Stethoscope,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/use-auth";
 import { useAccess } from "@/lib/use-access";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ const baseNav: { to: string; label: string; icon: typeof LayoutDashboard; exact?
   { to: "/", label: "Painel", icon: LayoutDashboard, exact: true },
   { to: "/animais", label: "Rebanho", icon: Beef },
   { to: "/vendas", label: "Vendas", icon: Receipt },
+  { to: "/saude", label: "Saúde", icon: Stethoscope },
   { to: "/clima", label: "Clima", icon: CloudSun },
   { to: "/precos", label: "Preços", icon: TrendingUp },
   { to: "/relatorios", label: "Relatórios", icon: FileBarChart },
@@ -43,9 +45,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [confirmOut, setConfirmOut] = useState(false);
 
-  const nav = isAdmin
-    ? [...baseNav, { to: "/admin", label: "Admin", icon: Shield }]
-    : baseNav;
+  const nav = useMemo(
+    () =>
+      isAdmin
+        ? [...baseNav, { to: "/admin", label: "Admin", icon: Shield }]
+        : baseNav,
+    [isAdmin],
+  );
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-0">
@@ -108,7 +114,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <nav
         className={cn(
           "fixed bottom-0 left-0 right-0 z-30 grid border-t border-border bg-card md:hidden",
-          isAdmin ? "grid-cols-7" : "grid-cols-6"
+          isAdmin ? "grid-cols-8" : "grid-cols-7"
         )}
       >
         {nav.map((n) => {
