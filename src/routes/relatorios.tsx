@@ -215,21 +215,11 @@ function Reports() {
         <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1.5">
             <Label>De</Label>
-            <Input
-              className="h-11"
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-            />
+            <DateField label="Data inicial" value={from} onChange={setFrom} />
           </div>
           <div className="space-y-1.5">
             <Label>Até</Label>
-            <Input
-              className="h-11"
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-            />
+            <DateField label="Data final" value={to} onChange={setTo} />
           </div>
           <div className="space-y-1.5">
             <Label>Categoria</Label>
