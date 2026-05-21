@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { RequireAuth } from "@/components/RequireAuth";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
@@ -28,6 +29,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { askVetAssistant, type VetAdvice } from "@/lib/vet.functions";
+import { VET_SPECIES, getBreedsForSpecies } from "@/lib/breeds";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/saude")({
@@ -40,17 +42,6 @@ export const Route = createFileRoute("/saude")({
   ),
   head: () => ({ meta: [{ title: "Saúde Animal — AgroGestor" }] }),
 });
-
-const species = [
-  "Bovino (boi/vaca)",
-  "Bezerro",
-  "Cavalo",
-  "Cabra",
-  "Ovelha",
-  "Porco",
-  "Aves (galinha/frango)",
-  "Outro",
-];
 
 const commonSymptoms = [
   "febre",
@@ -74,16 +65,46 @@ const urgencyMap = {
   },
 };
 
+const vetSchema = z.object({
+  speciesKey: z.string().min(1),
+  speciesCustom: z.string().trim().max(50).optional(),
+  breedKey: z.string().optional(),
+  breedCustom: z.string().trim().max(50).optional(),
+  ageMonths: z
+    .string()
+    .optional()
+    .refine(
+      (v) => !v || (/^\d{1,3}$/.test(v) && Number(v) >= 0 && Number(v) <= 999),
+      "Idade inválida (0–999 meses)",
+    ),
+  weightKg: z
+    .string()
+    .optional()
+    .refine(
+      (v) => !v || (/^\d{1,4}(\.\d{1,2})?$/.test(v) && Number(v) > 0 && Number(v) <= 9999),
+      "Peso inválido (1–9999 kg)",
+    ),
+  symptoms: z.string().trim().min(10, "Descreva os sintomas (mín. 10 caracteres)").max(2000),
+});
+
 function SaudeAnimal() {
   const ask = useServerFn(askVetAssistant);
   const [form, setForm] = useState({
-    species: species[0],
-    breed: "",
+    speciesKey: "bovino",
+    speciesCustom: "",
+    breedKey: "",
+    breedCustom: "",
     sex: "desconhecido" as "macho" | "femea" | "desconhecido",
     ageMonths: "",
     weightKg: "",
     symptoms: "",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const breedOptions = useMemo(
+    () => getBreedsForSpecies(form.speciesKey),
+    [form.speciesKey],
+  );
 
   type VetInput = {
     species: string;
@@ -102,17 +123,42 @@ function SaudeAnimal() {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.symptoms.trim()) {
-      toast.error("Descreva os sintomas");
+    const parsed = vetSchema.safeParse(form);
+    const errs: Record<string, string> = {};
+    if (!parsed.success) {
+      parsed.error.issues.forEach((i) => {
+        errs[i.path[0] as string] = i.message;
+      });
+    }
+    if (form.speciesKey === "outro" && !form.speciesCustom.trim()) {
+      errs.speciesCustom = "Informe a espécie";
+    }
+    if (form.breedKey === "Outro" && !form.breedCustom.trim()) {
+      errs.breedCustom = "Informe a raça";
+    }
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      toast.error("Corrija os campos destacados");
       return;
     }
+    setErrors({});
+
+    const speciesLabel =
+      form.speciesKey === "outro"
+        ? form.speciesCustom.trim()
+        : VET_SPECIES.find((s) => s.key === form.speciesKey)?.label ?? form.speciesKey;
+    const breedLabel =
+      form.breedKey === "Outro"
+        ? form.breedCustom.trim()
+        : form.breedKey || undefined;
+
     mut.mutate({
-      species: form.species,
-      breed: form.breed,
+      species: speciesLabel,
+      breed: breedLabel,
       sex: form.sex,
       ageMonths: form.ageMonths ? Number(form.ageMonths) : undefined,
       weightKg: form.weightKg ? Number(form.weightKg) : undefined,
-      symptoms: form.symptoms,
+      symptoms: form.symptoms.trim(),
     });
   }
 
@@ -123,12 +169,12 @@ function SaudeAnimal() {
     }));
   }
 
+  const errCls = (k: string) =>
+    errors[k] ? "border-destructive focus-visible:ring-destructive" : "";
+
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Saúde Animal"
-        subtitle="Assistente veterinário com IA"
-      />
+      <PageHeader title="Saúde Animal" subtitle="Assistente veterinário com IA" />
 
       <Alert>
         <AlertTriangle className="h-4 w-4" />
@@ -150,32 +196,80 @@ function SaudeAnimal() {
           <form onSubmit={submit} className="grid gap-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Espécie</Label>
+                <Label>Espécie *</Label>
                 <Select
-                  value={form.species}
-                  onValueChange={(v) => setForm({ ...form, species: v })}
+                  value={form.speciesKey}
+                  onValueChange={(v) =>
+                    setForm({
+                      ...form,
+                      speciesKey: v,
+                      breedKey: "",
+                      breedCustom: "",
+                    })
+                  }
                 >
                   <SelectTrigger className="h-11">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {species.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
+                    {VET_SPECIES.map((s) => (
+                      <SelectItem key={s.key} value={s.key}>
+                        {s.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {form.speciesKey === "outro" && (
+                  <Input
+                    className={`h-11 mt-2 ${errCls("speciesCustom")}`}
+                    value={form.speciesCustom}
+                    maxLength={50}
+                    onChange={(e) =>
+                      setForm({ ...form, speciesCustom: e.target.value })
+                    }
+                    placeholder="Digite a espécie"
+                  />
+                )}
+                {errors.speciesCustom && (
+                  <p className="text-xs text-destructive">{errors.speciesCustom}</p>
+                )}
               </div>
+
               <div className="space-y-1.5">
                 <Label>Raça (opcional)</Label>
-                <Input
-                  className="h-11"
-                  value={form.breed}
-                  onChange={(e) => setForm({ ...form, breed: e.target.value })}
-                  placeholder="Nelore, Holandesa..."
-                />
+                <Select
+                  value={form.breedKey}
+                  onValueChange={(v) =>
+                    setForm({ ...form, breedKey: v, breedCustom: "" })
+                  }
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Selecione a raça" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {breedOptions.map((b) => (
+                      <SelectItem key={b} value={b}>
+                        {b}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.breedKey === "Outro" && (
+                  <Input
+                    className={`h-11 mt-2 ${errCls("breedCustom")}`}
+                    value={form.breedCustom}
+                    maxLength={50}
+                    onChange={(e) =>
+                      setForm({ ...form, breedCustom: e.target.value })
+                    }
+                    placeholder="Digite a raça"
+                  />
+                )}
+                {errors.breedCustom && (
+                  <p className="text-xs text-destructive">{errors.breedCustom}</p>
+                )}
               </div>
+
               <div className="space-y-1.5">
                 <Label>Sexo</Label>
                 <Select
@@ -198,43 +292,71 @@ function SaudeAnimal() {
                 <div className="space-y-1.5">
                   <Label>Idade (meses)</Label>
                   <Input
-                    className="h-11"
+                    className={`h-11 ${errCls("ageMonths")}`}
                     type="number"
+                    inputMode="numeric"
                     min={0}
+                    max={999}
                     value={form.ageMonths}
-                    onChange={(e) =>
-                      setForm({ ...form, ageMonths: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^\d{0,3}$/.test(v)) {
+                        setForm({ ...form, ageMonths: v });
+                      }
+                    }}
                     placeholder="24"
                   />
+                  {errors.ageMonths && (
+                    <p className="text-xs text-destructive">{errors.ageMonths}</p>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label>Peso (kg)</Label>
                   <Input
-                    className="h-11"
+                    className={`h-11 ${errCls("weightKg")}`}
                     type="number"
-                    min={0}
+                    inputMode="decimal"
+                    min={1}
+                    max={9999}
                     step="0.1"
                     value={form.weightKg}
-                    onChange={(e) =>
-                      setForm({ ...form, weightKg: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^\d{0,4}(\.\d{0,2})?$/.test(v)) {
+                        setForm({ ...form, weightKg: v });
+                      }
+                    }}
                     placeholder="450"
                   />
+                  {errors.weightKg && (
+                    <p className="text-xs text-destructive">{errors.weightKg}</p>
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label>Sintomas observados</Label>
+              <Label>Sintomas observados *</Label>
               <Textarea
                 rows={4}
+                maxLength={2000}
+                className={errCls("symptoms")}
                 value={form.symptoms}
-                onChange={(e) =>
-                  setForm({ ...form, symptoms: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, symptoms: e.target.value })}
                 placeholder="Ex: animal com febre desde ontem, parou de comer, está apático..."
               />
+              <div className="flex items-center justify-between">
+                {errors.symptoms ? (
+                  <p className="text-xs text-destructive">{errors.symptoms}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Mínimo 10 caracteres.
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {form.symptoms.length}/2000
+                </p>
+              </div>
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {commonSymptoms.map((s) => (
                   <button
@@ -344,9 +466,7 @@ function SaudeAnimal() {
                       </div>
                     </div>
                     <div className="mt-1 text-sm">
-                      <span className="font-medium text-foreground">
-                        Dose:
-                      </span>{" "}
+                      <span className="font-medium text-foreground">Dose:</span>{" "}
                       {m.dosage}
                     </div>
                     {m.notes && (
