@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
 import { RequireAuth } from "@/components/RequireAuth";
@@ -9,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +31,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus, Beef, Trash2, Receipt, Search } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
+import { ANIMAL_TYPES, getBreedsForSpecies } from "@/lib/breeds";
 
 export const Route = createFileRoute("/animais")({
   component: () => (
@@ -40,8 +43,6 @@ export const Route = createFileRoute("/animais")({
   ),
   head: () => ({ meta: [{ title: "Rebanho — AgroGestor" }] }),
 });
-
-const TYPES = ["Boi", "Vaca", "Bezerro", "Novilho", "Touro", "Cavalo", "Outro"];
 
 const brl = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -107,14 +108,8 @@ function Animals() {
         .some((v) => String(v).toLowerCase().includes(q)),
   );
 
-  const totalSoldValue = soldSales.reduce(
-    (acc, s) => acc + Number(s.total),
-    0,
-  );
-  const totalSoldQty = soldSales.reduce(
-    (acc, s) => acc + Number(s.quantity),
-    0,
-  );
+  const totalSoldValue = soldSales.reduce((acc, s) => acc + Number(s.total), 0);
+  const totalSoldQty = soldSales.reduce((acc, s) => acc + Number(s.quantity), 0);
 
   return (
     <div className="space-y-5">
@@ -272,28 +267,84 @@ function EmptyState({
   );
 }
 
+// ---- Validação ----
+const animalSchema = z.object({
+  typeKey: z.string().min(1, "Selecione o tipo"),
+  typeCustom: z.string().trim().max(50).optional(),
+  noTag: z.boolean(),
+  identifier: z.string().trim().max(30).optional(),
+  breedKey: z.string().min(1, "Selecione a raça"),
+  breedCustom: z.string().trim().max(50).optional(),
+  weight_kg: z
+    .string()
+    .optional()
+    .refine(
+      (v) => !v || (/^\d{1,4}(\.\d{1,2})?$/.test(v) && Number(v) > 0 && Number(v) <= 9999),
+      "Peso inválido (1 a 9999 kg)",
+    ),
+  noLote: z.boolean(),
+  lote: z.string().trim().max(30).optional(),
+  origin: z.enum(["compra", "nascimento"]),
+});
+
 function NewAnimalDialog({ onDone }: { onDone: () => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [form, setForm] = useState({
+    typeKey: "boi",
+    typeCustom: "",
+    noTag: false,
     identifier: "",
-    type: "Boi",
-    breed: "",
+    breedKey: "",
+    breedCustom: "",
     weight_kg: "",
+    noLote: false,
     lote: "",
-    origin: "compra",
+    origin: "compra" as "compra" | "nascimento",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const breedOptions = useMemo(
+    () => getBreedsForSpecies(form.typeKey),
+    [form.typeKey],
+  );
 
   const create = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sem sessão");
+      const parsed = animalSchema.safeParse(form);
+      if (!parsed.success) {
+        const errs: Record<string, string> = {};
+        parsed.error.issues.forEach((i) => {
+          errs[i.path[0] as string] = i.message;
+        });
+        setErrors(errs);
+        throw new Error("Corrija os campos destacados");
+      }
+      if (form.typeKey === "outro" && !form.typeCustom.trim()) {
+        setErrors({ typeCustom: "Informe a espécie" });
+        throw new Error("Informe a espécie");
+      }
+      if (form.breedKey === "Outro" && !form.breedCustom.trim()) {
+        setErrors({ breedCustom: "Informe a raça" });
+        throw new Error("Informe a raça");
+      }
+      setErrors({});
+
+      const typeLabel =
+        form.typeKey === "outro"
+          ? form.typeCustom.trim()
+          : ANIMAL_TYPES.find((t) => t.key === form.typeKey)?.label ?? form.typeKey;
+      const breedLabel =
+        form.breedKey === "Outro" ? form.breedCustom.trim() : form.breedKey;
+
       const { error } = await supabase.from("animals").insert({
         user_id: user.id,
-        identifier: form.identifier || null,
-        type: form.type,
-        breed: form.breed || null,
+        identifier: form.noTag ? null : form.identifier.trim() || null,
+        type: typeLabel,
+        breed: breedLabel,
         weight_kg: form.weight_kg ? Number(form.weight_kg) : null,
-        lote: form.lote || null,
+        lote: form.noLote ? null : form.lote.trim() || null,
         origin: form.origin,
       });
       if (error) throw error;
@@ -307,8 +358,11 @@ function NewAnimalDialog({ onDone }: { onDone: () => void }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const errCls = (key: string) =>
+    errors[key] ? "border-destructive focus-visible:ring-destructive" : "";
+
   return (
-    <DialogContent className="max-w-md">
+    <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Novo animal</DialogTitle>
       </DialogHeader>
@@ -319,69 +373,154 @@ function NewAnimalDialog({ onDone }: { onDone: () => void }) {
         }}
         className="space-y-3"
       >
+        {/* Tipo */}
         <div className="space-y-1.5">
-          <Label>Identificação / Brinco</Label>
+          <Label>Espécie / Tipo *</Label>
+          <Select
+            value={form.typeKey}
+            onValueChange={(v) =>
+              setForm({ ...form, typeKey: v, breedKey: "", breedCustom: "" })
+            }
+          >
+            <SelectTrigger className="h-11">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ANIMAL_TYPES.map((t) => (
+                <SelectItem key={t.key} value={t.key}>
+                  {t.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {form.typeKey === "outro" && (
+            <Input
+              className={`h-11 mt-2 ${errCls("typeCustom")}`}
+              value={form.typeCustom}
+              maxLength={50}
+              onChange={(e) => setForm({ ...form, typeCustom: e.target.value })}
+              placeholder="Ex: búfalo, mula, avestruz..."
+            />
+          )}
+          {errors.typeCustom && (
+            <p className="text-xs text-destructive">{errors.typeCustom}</p>
+          )}
+        </div>
+
+        {/* Identificação */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label>Identificação / Brinco</Label>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Checkbox
+                checked={form.noTag}
+                onCheckedChange={(c) =>
+                  setForm({ ...form, noTag: !!c, identifier: "" })
+                }
+              />
+              Sem brinco
+            </label>
+          </div>
           <Input
             className="h-11"
-            value={form.identifier}
+            disabled={form.noTag}
+            value={form.noTag ? "" : form.identifier}
+            maxLength={30}
             onChange={(e) => setForm({ ...form, identifier: e.target.value })}
-            placeholder="Ex: BR-1234"
+            placeholder={form.noTag ? "Sem brinco" : "Ex: BR-1234"}
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>Tipo</Label>
-            <Select
-              value={form.type}
-              onValueChange={(v) => setForm({ ...form, type: v })}
-            >
-              <SelectTrigger className="h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Raça</Label>
+
+        {/* Raça */}
+        <div className="space-y-1.5">
+          <Label>Raça *</Label>
+          <Select
+            value={form.breedKey}
+            onValueChange={(v) => setForm({ ...form, breedKey: v, breedCustom: "" })}
+          >
+            <SelectTrigger className={`h-11 ${errCls("breedKey")}`}>
+              <SelectValue placeholder="Selecione a raça" />
+            </SelectTrigger>
+            <SelectContent>
+              {breedOptions.map((b) => (
+                <SelectItem key={b} value={b}>
+                  {b}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {form.breedKey === "Outro" && (
             <Input
-              className="h-11"
-              value={form.breed}
-              onChange={(e) => setForm({ ...form, breed: e.target.value })}
-              placeholder="Nelore"
+              className={`h-11 mt-2 ${errCls("breedCustom")}`}
+              value={form.breedCustom}
+              maxLength={50}
+              onChange={(e) => setForm({ ...form, breedCustom: e.target.value })}
+              placeholder="Digite a raça"
             />
-          </div>
+          )}
+          {(errors.breedKey || errors.breedCustom) && (
+            <p className="text-xs text-destructive">
+              {errors.breedCustom || errors.breedKey}
+            </p>
+          )}
         </div>
+
+        {/* Peso + Lote */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Peso (kg)</Label>
             <Input
-              className="h-11"
+              className={`h-11 ${errCls("weight_kg")}`}
               type="number"
+              inputMode="decimal"
+              min={1}
+              max={9999}
+              step="0.1"
               value={form.weight_kg}
-              onChange={(e) => setForm({ ...form, weight_kg: e.target.value })}
+              onChange={(e) => {
+                const v = e.target.value;
+                // Bloqueia negativos e mais de 4 dígitos inteiros
+                if (v === "" || /^\d{0,4}(\.\d{0,2})?$/.test(v)) {
+                  setForm({ ...form, weight_kg: v });
+                }
+              }}
+              placeholder="450"
             />
+            {errors.weight_kg && (
+              <p className="text-xs text-destructive">{errors.weight_kg}</p>
+            )}
           </div>
           <div className="space-y-1.5">
-            <Label>Lote</Label>
+            <div className="flex items-center justify-between">
+              <Label>Lote</Label>
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Checkbox
+                  checked={form.noLote}
+                  onCheckedChange={(c) =>
+                    setForm({ ...form, noLote: !!c, lote: "" })
+                  }
+                />
+                Sem lote
+              </label>
+            </div>
             <Input
               className="h-11"
-              value={form.lote}
+              disabled={form.noLote}
+              value={form.noLote ? "" : form.lote}
+              maxLength={30}
               onChange={(e) => setForm({ ...form, lote: e.target.value })}
-              placeholder="Lote 01"
+              placeholder={form.noLote ? "Sem lote" : "Lote 01"}
             />
           </div>
         </div>
+
         <div className="space-y-1.5">
           <Label>Origem</Label>
           <Select
             value={form.origin}
-            onValueChange={(v) => setForm({ ...form, origin: v })}
+            onValueChange={(v) =>
+              setForm({ ...form, origin: v as "compra" | "nascimento" })
+            }
           >
             <SelectTrigger className="h-11">
               <SelectValue />

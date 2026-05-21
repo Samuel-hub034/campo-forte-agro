@@ -19,8 +19,68 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Download, FileBarChart } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Download, FileBarChart, CalendarIcon } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { cn } from "@/lib/utils";
+
+const MIN_DATE = new Date("2000-01-01");
+const MAX_DATE = new Date();
+MAX_DATE.setFullYear(MAX_DATE.getFullYear() + 1);
+
+function isoToDate(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+function dateToIso(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function fmtBr(iso: string) {
+  if (!iso) return "Selecionar";
+  const d = isoToDate(iso);
+  return d.toLocaleDateString("pt-BR");
+}
+
+function DateField({
+  value,
+  onChange,
+  label,
+}: {
+  value: string;
+  onChange: (iso: string) => void;
+  label: string;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className={cn(
+            "h-11 w-full justify-start font-normal",
+            !value && "text-muted-foreground",
+          )}
+          aria-label={label}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {fmtBr(value)}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={value ? isoToDate(value) : undefined}
+          onSelect={(d) => d && onChange(dateToIso(d))}
+          disabled={(d) => d < MIN_DATE || d > MAX_DATE}
+          defaultMonth={value ? isoToDate(value) : new Date()}
+          initialFocus
+          className={cn("p-3 pointer-events-auto")}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const searchSchema = z.object({
   tipo: z.enum(["faturamento", "animais", "graos", "todos"]).optional().default("todos"),
@@ -155,21 +215,11 @@ function Reports() {
         <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1.5">
             <Label>De</Label>
-            <Input
-              className="h-11"
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-            />
+            <DateField label="Data inicial" value={from} onChange={setFrom} />
           </div>
           <div className="space-y-1.5">
             <Label>Até</Label>
-            <Input
-              className="h-11"
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-            />
+            <DateField label="Data final" value={to} onChange={setTo} />
           </div>
           <div className="space-y-1.5">
             <Label>Categoria</Label>
