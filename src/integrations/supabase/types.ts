@@ -14,16 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      animal_events: {
+        Row: {
+          animal_id: string
+          cost: number | null
+          created_at: string
+          data: Json
+          description: string | null
+          event_date: string
+          event_type: string
+          id: string
+          next_due_date: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          animal_id: string
+          cost?: number | null
+          created_at?: string
+          data?: Json
+          description?: string | null
+          event_date?: string
+          event_type: string
+          id?: string
+          next_due_date?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          animal_id?: string
+          cost?: number | null
+          created_at?: string
+          data?: Json
+          description?: string | null
+          event_date?: string
+          event_type?: string
+          id?: string
+          next_due_date?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "animal_events_animal_id_fkey"
+            columns: ["animal_id"]
+            isOneToOne: false
+            referencedRelation: "animals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       animals: {
         Row: {
           birth_date: string | null
           breed: string | null
           created_at: string
+          death_date: string | null
+          death_reason: string | null
+          father_id: string | null
           id: string
           identifier: string | null
           lote: string | null
+          mother_id: string | null
           notes: string | null
           origin: string | null
+          sex: string | null
           status: string
           type: string
           updated_at: string
@@ -34,11 +89,16 @@ export type Database = {
           birth_date?: string | null
           breed?: string | null
           created_at?: string
+          death_date?: string | null
+          death_reason?: string | null
+          father_id?: string | null
           id?: string
           identifier?: string | null
           lote?: string | null
+          mother_id?: string | null
           notes?: string | null
           origin?: string | null
+          sex?: string | null
           status?: string
           type: string
           updated_at?: string
@@ -49,18 +109,38 @@ export type Database = {
           birth_date?: string | null
           breed?: string | null
           created_at?: string
+          death_date?: string | null
+          death_reason?: string | null
+          father_id?: string | null
           id?: string
           identifier?: string | null
           lote?: string | null
+          mother_id?: string | null
           notes?: string | null
           origin?: string | null
+          sex?: string | null
           status?: string
           type?: string
           updated_at?: string
           user_id?: string
           weight_kg?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "animals_father_id_fkey"
+            columns: ["father_id"]
+            isOneToOne: false
+            referencedRelation: "animals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "animals_mother_id_fkey"
+            columns: ["mother_id"]
+            isOneToOne: false
+            referencedRelation: "animals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       market_prices: {
         Row: {
