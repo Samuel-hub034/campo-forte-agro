@@ -539,22 +539,42 @@ function NewAnimalDialog({ onDone }: { onDone: () => void }) {
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label>Origem</Label>
-          <Select
-            value={form.origin}
-            onValueChange={(v) =>
-              setForm({ ...form, origin: v as "compra" | "nascimento" })
-            }
-          >
-            <SelectTrigger className="h-11">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="compra">Compra</SelectItem>
-              <SelectItem value="nascimento">Nascimento</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>Origem</Label>
+            <Select
+              value={form.origin}
+              onValueChange={(v) =>
+                setForm({ ...form, origin: v as "compra" | "nascimento" })
+              }
+            >
+              <SelectTrigger className="h-11">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="compra">Compra</SelectItem>
+                <SelectItem value="nascimento">Nascimento</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Sexo</Label>
+            <Select
+              value={form.sex || "ni"}
+              onValueChange={(v) =>
+                setForm({ ...form, sex: v === "ni" ? "" : (v as "macho" | "femea") })
+              }
+            >
+              <SelectTrigger className="h-11">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ni">Não informado</SelectItem>
+                <SelectItem value="macho">Macho ♂</SelectItem>
+                <SelectItem value="femea">Fêmea ♀</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <DialogFooter>
           <Button type="submit" className="h-11 w-full" disabled={create.isPending}>
