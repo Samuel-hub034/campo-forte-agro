@@ -324,6 +324,7 @@ function NewAnimalDialog({ onDone }: { onDone: () => void }) {
     noLote: false,
     lote: "",
     origin: "compra" as "compra" | "nascimento",
+    sex: "" as "macho" | "femea" | "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
