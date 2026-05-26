@@ -307,6 +307,7 @@ const animalSchema = z.object({
   noLote: z.boolean(),
   lote: z.string().trim().max(30).optional(),
   origin: z.enum(["compra", "nascimento"]),
+  sex: z.enum(["macho", "femea", ""]).optional(),
 });
 
 function NewAnimalDialog({ onDone }: { onDone: () => void }) {
