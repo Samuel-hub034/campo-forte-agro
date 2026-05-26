@@ -160,14 +160,23 @@ function Animals() {
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
               {filteredAnimals.map((a) => (
-                <Card key={a.id} className="rounded-2xl">
-                  <CardContent className="flex items-start justify-between p-4">
-                    <div>
+                <Card key={a.id} className="rounded-2xl transition hover:shadow-md">
+                  <CardContent className="flex items-start justify-between gap-2 p-4">
+                    <Link
+                      to="/animais/$animalId"
+                      params={{ animalId: a.id }}
+                      className="flex-1 min-w-0"
+                    >
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">
                           {a.identifier || "Sem brinco"}
                         </span>
                         <Badge variant="secondary">{a.type}</Badge>
+                        {a.sex && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {a.sex === "macho" ? "♂" : "♀"}
+                          </Badge>
+                        )}
                       </div>
                       <div className="mt-1 text-sm text-muted-foreground">
                         {a.breed && <>Raça: {a.breed} • </>}
@@ -177,15 +186,28 @@ function Animals() {
                       <div className="mt-2 text-xs text-muted-foreground">
                         Status: <span className="font-medium">{a.status}</span>
                       </div>
+                    </Link>
+                    <div className="flex flex-col items-center gap-1">
+                      <Link
+                        to="/animais/$animalId"
+                        params={{ animalId: a.id }}
+                        className="text-muted-foreground hover:text-primary"
+                        aria-label="Ver detalhes"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm("Remover este animal?")) remove.mutate(a.id);
+                        }}
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => remove.mutate(a.id)}
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </CardContent>
                 </Card>
               ))}
