@@ -449,7 +449,7 @@ function NewEventDialog({
       }
       setErrors({});
 
-      const data: Record<string, unknown> = {};
+      const data: Record<string, number | string> = {};
       if (form.event_type === "pesagem" && form.weight_kg) {
         data.weight_kg = Number(form.weight_kg);
       }

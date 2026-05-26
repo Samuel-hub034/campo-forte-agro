@@ -19,6 +19,7 @@ import { Route as AssinaturaRouteImport } from './routes/assinatura'
 import { Route as AnimaisRouteImport } from './routes/animais'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AnimaisAnimalIdRouteImport } from './routes/animais.$animalId'
 
 const VendasRoute = VendasRouteImport.update({
   id: '/vendas',
@@ -70,11 +71,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnimaisAnimalIdRoute = AnimaisAnimalIdRouteImport.update({
+  id: '/$animalId',
+  path: '/$animalId',
+  getParentRoute: () => AnimaisRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/animais': typeof AnimaisRoute
+  '/animais': typeof AnimaisRouteWithChildren
   '/assinatura': typeof AssinaturaRoute
   '/clima': typeof ClimaRoute
   '/login': typeof LoginRoute
@@ -82,11 +88,12 @@ export interface FileRoutesByFullPath {
   '/relatorios': typeof RelatoriosRoute
   '/saude': typeof SaudeRoute
   '/vendas': typeof VendasRoute
+  '/animais/$animalId': typeof AnimaisAnimalIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/animais': typeof AnimaisRoute
+  '/animais': typeof AnimaisRouteWithChildren
   '/assinatura': typeof AssinaturaRoute
   '/clima': typeof ClimaRoute
   '/login': typeof LoginRoute
@@ -94,12 +101,13 @@ export interface FileRoutesByTo {
   '/relatorios': typeof RelatoriosRoute
   '/saude': typeof SaudeRoute
   '/vendas': typeof VendasRoute
+  '/animais/$animalId': typeof AnimaisAnimalIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/animais': typeof AnimaisRoute
+  '/animais': typeof AnimaisRouteWithChildren
   '/assinatura': typeof AssinaturaRoute
   '/clima': typeof ClimaRoute
   '/login': typeof LoginRoute
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   '/relatorios': typeof RelatoriosRoute
   '/saude': typeof SaudeRoute
   '/vendas': typeof VendasRoute
+  '/animais/$animalId': typeof AnimaisAnimalIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/saude'
     | '/vendas'
+    | '/animais/$animalId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/saude'
     | '/vendas'
+    | '/animais/$animalId'
   id:
     | '__root__'
     | '/'
@@ -145,12 +156,13 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/saude'
     | '/vendas'
+    | '/animais/$animalId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
-  AnimaisRoute: typeof AnimaisRoute
+  AnimaisRoute: typeof AnimaisRouteWithChildren
   AssinaturaRoute: typeof AssinaturaRoute
   ClimaRoute: typeof ClimaRoute
   LoginRoute: typeof LoginRoute
@@ -232,13 +244,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/animais/$animalId': {
+      id: '/animais/$animalId'
+      path: '/$animalId'
+      fullPath: '/animais/$animalId'
+      preLoaderRoute: typeof AnimaisAnimalIdRouteImport
+      parentRoute: typeof AnimaisRoute
+    }
   }
 }
+
+interface AnimaisRouteChildren {
+  AnimaisAnimalIdRoute: typeof AnimaisAnimalIdRoute
+}
+
+const AnimaisRouteChildren: AnimaisRouteChildren = {
+  AnimaisAnimalIdRoute: AnimaisAnimalIdRoute,
+}
+
+const AnimaisRouteWithChildren =
+  AnimaisRoute._addFileChildren(AnimaisRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
-  AnimaisRoute: AnimaisRoute,
+  AnimaisRoute: AnimaisRouteWithChildren,
   AssinaturaRoute: AssinaturaRoute,
   ClimaRoute: ClimaRoute,
   LoginRoute: LoginRoute,
