@@ -370,6 +370,7 @@ function NewAnimalDialog({ onDone }: { onDone: () => void }) {
         weight_kg: form.weight_kg ? Number(form.weight_kg) : null,
         lote: form.noLote ? null : form.lote.trim() || null,
         origin: form.origin,
+        sex: form.sex || null,
       });
       if (error) throw error;
     },
