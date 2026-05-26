@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Beef, Trash2, Receipt, Search } from "lucide-react";
+import { Plus, Beef, Trash2, Receipt, Search, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { ANIMAL_TYPES, getBreedsForSpecies } from "@/lib/breeds";
