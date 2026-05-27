@@ -232,6 +232,45 @@ export type Database = {
         }
         Relationships: []
       }
+      promotions: {
+        Row: {
+          active: boolean
+          created_at: string
+          discount_type: string
+          discount_value: number
+          ends_at: string
+          id: string
+          name: string
+          plans: string[]
+          starts_at: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          discount_type: string
+          discount_value: number
+          ends_at: string
+          id?: string
+          name: string
+          plans?: string[]
+          starts_at?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          ends_at?: string
+          id?: string
+          name?: string
+          plans?: string[]
+          starts_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sales: {
         Row: {
           buyer: string | null
@@ -284,6 +323,7 @@ export type Database = {
           expires_at: string | null
           id: string
           payment_method: string | null
+          plan: string
           started_at: string | null
           status: string
           updated_at: string
@@ -295,6 +335,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           payment_method?: string | null
+          plan?: string
           started_at?: string | null
           status?: string
           updated_at?: string
@@ -306,6 +347,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           payment_method?: string | null
+          plan?: string
           started_at?: string | null
           status?: string
           updated_at?: string
