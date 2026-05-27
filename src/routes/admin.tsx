@@ -15,8 +15,19 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Users, Wallet, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { Users, Wallet, ShieldAlert, CheckCircle2, Sparkles, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge as Pill } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/admin")({
   component: () => (
