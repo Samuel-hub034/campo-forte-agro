@@ -15,8 +15,19 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { Users, Wallet, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { Users, Wallet, ShieldAlert, CheckCircle2, Sparkles, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge as Pill } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/admin")({
   component: () => (
@@ -131,6 +142,7 @@ function AdminPage() {
         <TabsList>
           <TabsTrigger value="subs">Assinaturas</TabsTrigger>
           <TabsTrigger value="payments">Pagamentos</TabsTrigger>
+          <TabsTrigger value="promos">Promoções</TabsTrigger>
         </TabsList>
 
         <TabsContent value="subs" className="space-y-3 pt-4">
@@ -239,7 +251,186 @@ function AdminPage() {
             ))
           )}
         </TabsContent>
+
+        <TabsContent value="promos" className="space-y-3 pt-4">
+          <PromotionsAdmin />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+type PromoRow = {
+  id: string;
+  name: string;
+  discount_type: "percent" | "fixed";
+  discount_value: number;
+  plans: string[];
+  starts_at: string;
+  ends_at: string;
+  active: boolean;
+};
+
+function PromotionsAdmin() {
+  const qc = useQueryClient();
+  const { data: promos, isLoading } = useQuery({
+    queryKey: ["promotions-admin"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("promotions")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as PromoRow[];
+    },
+  });
+
+  const [name, setName] = useState("");
+  const [type, setType] = useState<"percent" | "fixed">("percent");
+  const [value, setValue] = useState("");
+  const [endsAt, setEndsAt] = useState("");
+  const [plans, setPlans] = useState<string[]>(["mensal", "trimestral", "anual"]);
+
+  const create = useMutation({
+    mutationFn: async () => {
+      if (!name.trim()) throw new Error("Informe o nome");
+      const v = Number(value);
+      if (!v || v <= 0) throw new Error("Desconto inválido");
+      if (type === "percent" && v > 100) throw new Error("Percentual máx. 100%");
+      if (!endsAt) throw new Error("Defina a data de término");
+      if (plans.length === 0) throw new Error("Escolha ao menos um plano");
+      const { error } = await supabase.from("promotions").insert({
+        name: name.trim(),
+        discount_type: type,
+        discount_value: v,
+        plans,
+        ends_at: new Date(endsAt).toISOString(),
+        active: true,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["promotions-admin"] });
+      qc.invalidateQueries({ queryKey: ["promotions-active"] });
+      setName(""); setValue(""); setEndsAt("");
+      toast.success("Promoção criada");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const toggle = useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      const { error } = await supabase
+        .from("promotions").update({ active, updated_at: new Date().toISOString() }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["promotions-admin"] });
+      qc.invalidateQueries({ queryKey: ["promotions-active"] });
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("promotions").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["promotions-admin"] });
+      qc.invalidateQueries({ queryKey: ["promotions-active"] });
+      toast.success("Promoção removida");
+    },
+  });
+
+  const togglePlan = (p: string) =>
+    setPlans((cur) => (cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p]));
+
+  return (
+    <div className="space-y-4">
+      <Card className="rounded-2xl border-primary/30">
+        <CardContent className="space-y-3 p-4">
+          <div className="flex items-center gap-2 font-semibold">
+            <Sparkles className="h-4 w-4 text-primary" />
+            Nova promoção
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Nome</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Black Friday" maxLength={60} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tipo</Label>
+              <Select value={type} onValueChange={(v) => setType(v as "percent" | "fixed")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="percent">Percentual (%)</SelectItem>
+                  <SelectItem value="fixed">Valor fixo (R$)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>{type === "percent" ? "Desconto (%)" : "Desconto (R$)"}</Label>
+              <Input type="number" min="1" max={type === "percent" ? "100" : undefined} value={value} onChange={(e) => setValue(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Válido até</Label>
+              <Input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Planos participantes</Label>
+            <div className="flex flex-wrap gap-3">
+              {["mensal", "trimestral", "anual"].map((p) => (
+                <label key={p} className="flex items-center gap-2 text-sm capitalize">
+                  <Checkbox checked={plans.includes(p)} onCheckedChange={() => togglePlan(p)} />
+                  {p}
+                </label>
+              ))}
+            </div>
+          </div>
+          <Button onClick={() => create.mutate()} disabled={create.isPending} className="w-full sm:w-auto">
+            <Plus className="h-4 w-4" /> Criar promoção
+          </Button>
+        </CardContent>
+      </Card>
+
+      {isLoading ? (
+        <div className="h-24 animate-pulse rounded-2xl bg-muted" />
+      ) : (promos ?? []).length === 0 ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma promoção cadastrada.</p>
+      ) : (
+        (promos ?? []).map((p) => {
+          const expired = new Date(p.ends_at).getTime() < Date.now();
+          return (
+            <Card key={p.id} className="rounded-2xl">
+              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{p.name}</span>
+                    {expired && <Pill variant="destructive">Expirada</Pill>}
+                    {!p.active && !expired && <Pill variant="secondary">Inativa</Pill>}
+                    {p.active && !expired && <Pill>Ativa</Pill>}
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {p.discount_type === "percent" ? `${p.discount_value}% OFF` : `${brl(Number(p.discount_value))} OFF`}
+                    {" • "}até {new Date(p.ends_at).toLocaleString("pt-BR")}
+                    {" • "}planos: {p.plans.join(", ")}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Switch checked={p.active} onCheckedChange={(v) => toggle.mutate({ id: p.id, active: v })} />
+                    <span className="text-xs text-muted-foreground">Ativa</span>
+                  </div>
+                  <Button size="icon" variant="ghost" onClick={() => remove.mutate(p.id)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })
+      )}
     </div>
   );
 }
