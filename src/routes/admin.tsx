@@ -142,6 +142,7 @@ function AdminPage() {
         <TabsList>
           <TabsTrigger value="subs">Assinaturas</TabsTrigger>
           <TabsTrigger value="payments">Pagamentos</TabsTrigger>
+          <TabsTrigger value="promos">Promoções</TabsTrigger>
         </TabsList>
 
         <TabsContent value="subs" className="space-y-3 pt-4">
