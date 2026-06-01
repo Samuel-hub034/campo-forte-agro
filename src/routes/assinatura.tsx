@@ -11,6 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Tabs,
   TabsContent,
   TabsList,
@@ -27,6 +35,9 @@ import {
   Loader2,
   Copy,
   Sparkles,
+  Gift,
+  CalendarClock,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PLANS, type PlanId, brl, applyPromo, type Promotion } from "@/lib/plans";
@@ -41,24 +52,46 @@ export const Route = createFileRoute("/assinatura")({
   head: () => ({ meta: [{ title: "Assinatura — AgroGestor" }] }),
 });
 
+const TRIAL_DAYS = 7;
+
+/** Simple deterministic fingerprint for the card (demo-grade). */
+async function fingerprintCard(digits: string) {
+  const buf = new TextEncoder().encode(`agro:${digits}`);
+  const hash = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function validCard(num: string, name: string, exp: string, cvv: string) {
+  const d = num.replace(/\D/g, "");
+  if (d.length < 13 || d.length > 19) return "Número do cartão inválido";
+  if (name.trim().length < 3) return "Informe o nome impresso no cartão";
+  const m = /^(\d{2})\/(\d{2})$/.exec(exp);
+  if (!m) return "Validade deve estar no formato MM/AA";
+  const mm = +m[1], yy = +m[2];
+  if (mm < 1 || mm > 12) return "Mês de validade inválido";
+  const expDate = new Date(2000 + yy, mm, 0, 23, 59, 59);
+  if (expDate.getTime() < Date.now()) return "Cartão vencido";
+  if (!/^\d{3,4}$/.test(cvv)) return "CVV inválido";
+  return null;
+}
+
 function SubscriptionPage() {
   const { user, signOut } = useAuth();
-  const { subscription, status, hasAccess } = useAccess();
+  const { subscription, status, hasAccess, trialDaysLeft } = useAccess();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [planId, setPlanId] = useState<PlanId>("anual");
   const [method, setMethod] = useState<"pix" | "credito" | "debito" | "boleto">("pix");
   const [processing, setProcessing] = useState(false);
-  const [approved, setApproved] = useState(hasAccess);
+  const [trialOpen, setTrialOpen] = useState(false);
 
   const { data: promos } = useQuery({
     queryKey: ["promotions-active"],
     staleTime: 60_000,
     queryFn: async () => {
-      const { data } = await supabase
-        .from("promotions")
-        .select("*")
-        .eq("active", true);
+      const { data } = await supabase.from("promotions").select("*").eq("active", true);
       return (data ?? []) as Promotion[];
     },
   });
@@ -73,26 +106,26 @@ function SubscriptionPage() {
       const now = new Date();
       const expires = new Date(now);
       expires.setMonth(expires.getMonth() + plan.months);
-      const { error: subErr } = await supabase
-        .from("subscriptions")
-        .upsert(
-          {
-            user_id: user.id,
-            status: "ativa",
-            amount: finalPrice,
-            plan: planId,
-            payment_method: method,
-            started_at: now.toISOString(),
-            expires_at: expires.toISOString(),
-            updated_at: now.toISOString(),
-          },
-          { onConflict: "user_id" },
-        );
-      if (subErr) throw subErr;
+      const { error } = await supabase.from("subscriptions").upsert(
+        {
+          user_id: user.id,
+          status: "ativa",
+          amount: finalPrice,
+          plan: planId,
+          payment_method: method,
+          started_at: now.toISOString(),
+          expires_at: expires.toISOString(),
+          trial_ends_at: null,
+          cancelled_at: null,
+          auto_renew: true,
+          updated_at: now.toISOString(),
+        } as never,
+        { onConflict: "user_id" },
+      );
+      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["access"] });
-      setApproved(true);
       toast.success("Assinatura ativada!");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -100,27 +133,93 @@ function SubscriptionPage() {
 
   const simulate = async () => {
     setProcessing(true);
-    await new Promise((r) => setTimeout(r, 1200));
+    await new Promise((r) => setTimeout(r, 1000));
     await activate.mutateAsync();
     setProcessing(false);
   };
 
-  if (approved || hasAccess) {
+  const cancel = useMutation({
+    mutationFn: async () => {
+      if (!user) return;
+      const { error } = await supabase
+        .from("subscriptions")
+        .update({
+          status: "cancelada",
+          auto_renew: false,
+          cancelled_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["access"] });
+      toast.success("Assinatura cancelada. Acesso premium encerrado.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Active subscription / trial view
+  if (hasAccess) {
+    const sub = subscription as (typeof subscription & {
+      trial_ends_at?: string | null;
+      auto_renew?: boolean;
+      card_last4?: string | null;
+    }) | null;
+    const isTrial = status === "trial";
+    const nextCharge = isTrial ? sub?.trial_ends_at : sub?.expires_at;
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
         <Card className="w-full max-w-md rounded-2xl">
           <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
-            <div className="grid h-16 w-16 place-items-center rounded-full bg-success/10 text-success">
-              <CheckCircle2 className="h-9 w-9" />
+            <div className={cn(
+              "grid h-16 w-16 place-items-center rounded-full",
+              isTrial ? "bg-primary/10 text-primary" : "bg-success/10 text-success",
+            )}>
+              {isTrial ? <Gift className="h-9 w-9" /> : <CheckCircle2 className="h-9 w-9" />}
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Pagamento aprovado</h1>
+              <h1 className="text-2xl font-bold">
+                {isTrial ? "Teste grátis ativo" : "Assinatura ativa"}
+              </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Assinatura ativada com sucesso. Bem-vindo ao AgroGestor!
+                {isTrial
+                  ? `Você tem ${trialDaysLeft} dia${trialDaysLeft === 1 ? "" : "s"} restante${trialDaysLeft === 1 ? "" : "s"}.`
+                  : "Bem-vindo ao AgroGestor."}
               </p>
             </div>
+            {nextCharge && (
+              <div className="w-full rounded-lg border bg-muted/40 p-3 text-left text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <CalendarClock className="h-4 w-4" />
+                  <span>{isTrial ? "Cobrança automática em" : "Próxima renovação em"}</span>
+                </div>
+                <div className="font-semibold">
+                  {new Date(nextCharge).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
+                </div>
+                {sub?.card_last4 && (
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Cartão final •••• {sub.card_last4} • Renovação {sub.auto_renew === false ? "desativada" : "automática"}
+                  </div>
+                )}
+              </div>
+            )}
             <Button size="lg" className="h-12 w-full text-base" onClick={() => navigate({ to: "/" })}>
               Continuar para o sistema
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              disabled={cancel.isPending}
+              onClick={() => {
+                if (confirm("Cancelar agora encerra seu acesso premium imediatamente. Continuar?")) {
+                  cancel.mutate();
+                }
+              }}
+            >
+              <XCircle className="h-4 w-4" />
+              {isTrial ? "Cancelar teste grátis" : "Cancelar assinatura"}
             </Button>
           </CardContent>
         </Card>
@@ -132,9 +231,13 @@ function SubscriptionPage() {
     pendente: { title: "Escolha seu plano", sub: "Selecione o melhor período para você." },
     vencida: { title: "Sua assinatura venceu", sub: "Renove para continuar usando o sistema." },
     atrasada: { title: "Pagamento em atraso", sub: "Regularize sua assinatura para liberar o acesso." },
+    cancelada: { title: "Assinatura cancelada", sub: "Reative escolhendo um plano abaixo." },
     ativa: { title: "Assinatura", sub: "" },
   };
   const head = headlineByStatus[status] ?? headlineByStatus.pendente;
+
+  // Trial only available for fully-new users (no subscription record / status pendente, never trialed)
+  const trialEligible = status === "pendente" && !subscription;
 
   return (
     <div className="min-h-screen bg-background px-4 py-8">
@@ -157,7 +260,6 @@ function SubscriptionPage() {
           <p className="mt-1 text-muted-foreground">{head.sub}</p>
         </div>
 
-        {/* Plan cards */}
         <div className="mb-6 grid gap-3 sm:grid-cols-3">
           {PLANS.map((p) => {
             const sel = p.id === planId;
@@ -248,6 +350,22 @@ function SubscriptionPage() {
                 <>Confirmar pagamento de {brl(finalPrice)}</>
               )}
             </Button>
+
+            {trialEligible && (
+              <div className="mt-3 flex flex-col items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setTrialOpen(true)}
+                  className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                >
+                  Experimentar gratuitamente por {TRIAL_DAYS} dias
+                </button>
+                <p className="text-[10px] text-muted-foreground">
+                  Cartão obrigatório • cobrança automática após o período
+                </p>
+              </div>
+            )}
+
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
               Ambiente de demonstração — pagamento simulado.
             </p>
@@ -260,7 +378,170 @@ function SubscriptionPage() {
           </p>
         )}
       </div>
+
+      <TrialDialog
+        open={trialOpen}
+        onOpenChange={setTrialOpen}
+        planId={planId}
+        planLabel={plan.label}
+        finalPrice={finalPrice}
+        onActivated={() => {
+          setTrialOpen(false);
+          qc.invalidateQueries({ queryKey: ["access"] });
+        }}
+      />
     </div>
+  );
+}
+
+function TrialDialog({
+  open,
+  onOpenChange,
+  planId,
+  planLabel,
+  finalPrice,
+  onActivated,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  planId: PlanId;
+  planLabel: string;
+  finalPrice: number;
+  onActivated: () => void;
+}) {
+  const { user } = useAuth();
+  const [num, setNum] = useState("");
+  const [name, setName] = useState("");
+  const [exp, setExp] = useState("");
+  const [cvv, setCvv] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleActivate = async () => {
+    if (!user) return;
+    const err = validCard(num, name, exp, cvv);
+    if (err) {
+      toast.error(err);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const digits = num.replace(/\D/g, "");
+      const fp = await fingerprintCard(digits);
+      const last4 = digits.slice(-4);
+
+      // Anti-abuse: register email + card fingerprint. Unique constraint
+      // blocks re-use across accounts.
+      const { error: usageErr } = await supabase.from("trial_usage").insert({
+        user_id: user.id,
+        email: (user.email ?? "").toLowerCase(),
+        card_fingerprint: fp,
+      } as never);
+      if (usageErr) {
+        if (usageErr.code === "23505") {
+          toast.error("Este e-mail ou cartão já usou o teste grátis.");
+        } else {
+          toast.error(usageErr.message);
+        }
+        setSubmitting(false);
+        return;
+      }
+
+      const now = new Date();
+      const trialEnd = new Date(now.getTime() + TRIAL_DAYS * 86_400_000);
+      const { error: subErr } = await supabase.from("subscriptions").upsert(
+        {
+          user_id: user.id,
+          status: "trial",
+          amount: finalPrice,
+          plan: planId,
+          payment_method: "credito",
+          started_at: now.toISOString(),
+          expires_at: null,
+          trial_ends_at: trialEnd.toISOString(),
+          auto_renew: true,
+          cancelled_at: null,
+          card_fingerprint: fp,
+          card_last4: last4,
+          updated_at: now.toISOString(),
+        } as never,
+        { onConflict: "user_id" },
+      );
+      if (subErr) {
+        toast.error(subErr.message);
+        setSubmitting(false);
+        return;
+      }
+      toast.success(`Teste grátis ativado — ${TRIAL_DAYS} dias liberados!`);
+      onActivated();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Gift className="h-5 w-5 text-primary" />
+            Teste grátis por {TRIAL_DAYS} dias
+          </DialogTitle>
+          <DialogDescription>
+            Acesso total durante {TRIAL_DAYS} dias. Sem cobrança hoje — após o período,
+            renovamos automaticamente no plano <b>{planLabel}</b> por <b>{brl(finalPrice)}</b>.
+            Cancele a qualquer momento.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Número do cartão</Label>
+            <Input
+              inputMode="numeric"
+              maxLength={19}
+              placeholder="0000 0000 0000 0000"
+              value={num}
+              onChange={(e) => setNum(e.target.value.replace(/\D/g, "").replace(/(.{4})/g, "$1 ").trim())}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Nome impresso</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value.toUpperCase())} placeholder="NOME COMPLETO" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Validade</Label>
+              <Input
+                placeholder="MM/AA"
+                maxLength={5}
+                value={exp}
+                onChange={(e) => {
+                  let v = e.target.value.replace(/\D/g, "").slice(0, 4);
+                  if (v.length > 2) v = `${v.slice(0, 2)}/${v.slice(2)}`;
+                  setExp(v);
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>CVV</Label>
+              <Input inputMode="numeric" maxLength={4} placeholder="123" value={cvv}
+                onChange={(e) => setCvv(e.target.value.replace(/\D/g, ""))} />
+            </div>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Ao continuar você autoriza a cobrança automática ao final do teste. O teste é
+            válido uma única vez por usuário e cartão.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
+            Cancelar
+          </Button>
+          <Button onClick={handleActivate} disabled={submitting}>
+            {submitting ? <><Loader2 className="h-4 w-4 animate-spin" />Ativando...</> : "Iniciar teste grátis"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
