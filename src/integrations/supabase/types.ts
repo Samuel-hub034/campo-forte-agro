@@ -319,6 +319,10 @@ export type Database = {
       subscriptions: {
         Row: {
           amount: number
+          auto_renew: boolean
+          cancelled_at: string | null
+          card_fingerprint: string | null
+          card_last4: string | null
           created_at: string
           expires_at: string | null
           id: string
@@ -326,11 +330,16 @@ export type Database = {
           plan: string
           started_at: string | null
           status: string
+          trial_ends_at: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           amount?: number
+          auto_renew?: boolean
+          cancelled_at?: string | null
+          card_fingerprint?: string | null
+          card_last4?: string | null
           created_at?: string
           expires_at?: string | null
           id?: string
@@ -338,11 +347,16 @@ export type Database = {
           plan?: string
           started_at?: string | null
           status?: string
+          trial_ends_at?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           amount?: number
+          auto_renew?: boolean
+          cancelled_at?: string | null
+          card_fingerprint?: string | null
+          card_last4?: string | null
           created_at?: string
           expires_at?: string | null
           id?: string
@@ -350,7 +364,32 @@ export type Database = {
           plan?: string
           started_at?: string | null
           status?: string
+          trial_ends_at?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trial_usage: {
+        Row: {
+          card_fingerprint: string
+          created_at: string
+          email: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          card_fingerprint: string
+          created_at?: string
+          email: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          card_fingerprint?: string
+          created_at?: string
+          email?: string
+          id?: string
           user_id?: string
         }
         Relationships: []
