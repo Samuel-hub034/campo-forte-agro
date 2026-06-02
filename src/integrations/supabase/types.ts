@@ -142,6 +142,33 @@ export type Database = {
           },
         ]
       }
+      market_price_history: {
+        Row: {
+          created_at: string
+          id: string
+          price: number
+          product: string
+          reference_date: string
+          state: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          price: number
+          product: string
+          reference_date?: string
+          state: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          price?: number
+          product?: string
+          reference_date?: string
+          state?: string
+        }
+        Relationships: []
+      }
       market_prices: {
         Row: {
           created_at: string
@@ -172,6 +199,51 @@ export type Database = {
           region?: string
           unit?: string
           variation?: number | null
+        }
+        Relationships: []
+      }
+      market_prices_states: {
+        Row: {
+          created_at: string
+          id: string
+          price: number
+          product: string
+          reference_date: string
+          region: string
+          source: string
+          state: string
+          unit: string
+          updated_at: string
+          variation_day: number
+          variation_week: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          price: number
+          product: string
+          reference_date?: string
+          region: string
+          source?: string
+          state: string
+          unit: string
+          updated_at?: string
+          variation_day?: number
+          variation_week?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          price?: number
+          product?: string
+          reference_date?: string
+          region?: string
+          source?: string
+          state?: string
+          unit?: string
+          updated_at?: string
+          variation_day?: number
+          variation_week?: number
         }
         Relationships: []
       }
