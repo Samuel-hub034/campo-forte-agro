@@ -26,7 +26,7 @@ export const refreshMarketPrices = createServerFn({ method: "POST" }).handler(
       const pct = (Math.random() - 0.5) * 4; // ±2%
       const newPrice = Math.max(
         0.01,
-        Number(Number(r.price) * (1 + pct / 100)).toFixed(2),
+        Number((Number(r.price) * (1 + pct / 100)).toFixed(2)),
       );
 
       // Variação semanal: compara com preço de ~7 dias atrás
