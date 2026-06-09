@@ -317,7 +317,7 @@ function Prices() {
       <ProductDetail
         product={openProduct}
         rows={data.filter((d) => d.product === openProduct)}
-        onClose={() => setOpenProduct(null)}
+        onClose={closeProduct}
       />
     </div>
   );
