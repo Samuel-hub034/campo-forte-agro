@@ -36,9 +36,11 @@ import {
   History,
   GitCompare,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { refreshMarketPrices } from "@/lib/prices.functions";
+import { z } from "zod";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import {
   Area,
   AreaChart,
@@ -49,7 +51,12 @@ import {
   YAxis,
 } from "recharts";
 
+const searchSchema = z.object({
+  product: fallback(z.string().optional(), undefined),
+});
+
 export const Route = createFileRoute("/precos")({
+  validateSearch: zodValidator(searchSchema),
   component: () => (
     <RequireAuth>
       <AppShell>
