@@ -175,12 +175,11 @@ function Reports() {
       </Card>
 
       <Tabs value={tab} onValueChange={(v) => { setTab(v); navigate({ search: { tipo: v as never } }); }}>
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-5">
           <TabsTrigger value="executivo"><TrendingUp className="mr-1 h-3.5 w-3.5" />Executivo</TabsTrigger>
           <TabsTrigger value="rebanho"><Beef className="mr-1 h-3.5 w-3.5" />Rebanho</TabsTrigger>
           <TabsTrigger value="leite"><Milk className="mr-1 h-3.5 w-3.5" />Leite</TabsTrigger>
           <TabsTrigger value="sanitario"><Stethoscope className="mr-1 h-3.5 w-3.5" />Sanitário</TabsTrigger>
-          <TabsTrigger value="executivo" hidden />
           <TabsTrigger value="ia"><Sparkles className="mr-1 h-3.5 w-3.5" />Análise IA</TabsTrigger>
         </TabsList>
 
