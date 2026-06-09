@@ -264,7 +264,7 @@ function Prices() {
           {products.map((p) => (
             <button
               key={p.product}
-              onClick={() => setOpenProduct(p.product)}
+              onClick={() => navigate({ search: { product: p.product } })}
               className="group text-left"
             >
               <Card className="rounded-2xl transition-all hover:border-primary/40 hover:shadow-md">
