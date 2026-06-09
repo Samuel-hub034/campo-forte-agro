@@ -22,8 +22,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Download, FileBarChart, CalendarIcon, TrendingUp, TrendingDown,
-  Beef, Wheat, Milk, Stethoscope, DollarSign, Sparkles, RefreshCw,
+  Download, FileBarChart, CalendarIcon, TrendingUp,
+  Beef, Milk, Stethoscope, DollarSign, Sparkles, RefreshCw,
   Users, Trophy, ArrowUpRight, ArrowDownRight, Minus,
 } from "lucide-react";
 import {
