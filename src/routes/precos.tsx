@@ -36,9 +36,11 @@ import {
   History,
   GitCompare,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { refreshMarketPrices } from "@/lib/prices.functions";
+import { z } from "zod";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import {
   Area,
   AreaChart,
@@ -49,7 +51,12 @@ import {
   YAxis,
 } from "recharts";
 
+const searchSchema = z.object({
+  product: fallback(z.string().optional(), undefined),
+});
+
 export const Route = createFileRoute("/precos")({
+  validateSearch: zodValidator(searchSchema),
   component: () => (
     <RequireAuth>
       <AppShell>
@@ -107,11 +114,22 @@ function VariationBadge({ value }: { value: number }) {
 }
 
 function Prices() {
+  const { product: productParam } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const [region, setRegion] = useState("Todas");
   const [search, setSearch] = useState("");
-  const [openProduct, setOpenProduct] = useState<string | null>(null);
+  const [openProduct, setOpenProduct] = useState<string | null>(productParam ?? null);
   const qc = useQueryClient();
   const refresh = useServerFn(refreshMarketPrices);
+
+  // Sync URL ?product= with dialog state
+  useEffect(() => {
+    setOpenProduct(productParam ?? null);
+  }, [productParam]);
+  const closeProduct = () => {
+    setOpenProduct(null);
+    navigate({ search: { product: undefined } });
+  };
 
   const { data = [], isLoading, dataUpdatedAt } = useQuery({
     queryKey: ["market_prices_states"],
@@ -246,7 +264,7 @@ function Prices() {
           {products.map((p) => (
             <button
               key={p.product}
-              onClick={() => setOpenProduct(p.product)}
+              onClick={() => navigate({ search: { product: p.product } })}
               className="group text-left"
             >
               <Card className="rounded-2xl transition-all hover:border-primary/40 hover:shadow-md">
@@ -299,7 +317,7 @@ function Prices() {
       <ProductDetail
         product={openProduct}
         rows={data.filter((d) => d.product === openProduct)}
-        onClose={() => setOpenProduct(null)}
+        onClose={closeProduct}
       />
     </div>
   );
