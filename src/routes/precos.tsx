@@ -114,11 +114,22 @@ function VariationBadge({ value }: { value: number }) {
 }
 
 function Prices() {
+  const { product: productParam } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const [region, setRegion] = useState("Todas");
   const [search, setSearch] = useState("");
-  const [openProduct, setOpenProduct] = useState<string | null>(null);
+  const [openProduct, setOpenProduct] = useState<string | null>(productParam ?? null);
   const qc = useQueryClient();
   const refresh = useServerFn(refreshMarketPrices);
+
+  // Sync URL ?product= with dialog state
+  useEffect(() => {
+    setOpenProduct(productParam ?? null);
+  }, [productParam]);
+  const closeProduct = () => {
+    setOpenProduct(null);
+    navigate({ search: { product: undefined } });
+  };
 
   const { data = [], isLoading, dataUpdatedAt } = useQuery({
     queryKey: ["market_prices_states"],
