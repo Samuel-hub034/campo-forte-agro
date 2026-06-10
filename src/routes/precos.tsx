@@ -40,7 +40,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { refreshMarketPrices } from "@/lib/prices.functions";
 import { z } from "zod";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { zodValidator } from "@tanstack/zod-adapter";
 import {
   Area,
   AreaChart,
