@@ -52,7 +52,7 @@ import {
 } from "recharts";
 
 const searchSchema = z.object({
-  product: fallback(z.string().optional(), undefined),
+  product: z.string().optional(),
 });
 
 export const Route = createFileRoute("/precos")({
