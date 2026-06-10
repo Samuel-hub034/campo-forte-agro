@@ -222,13 +222,19 @@ function Sales() {
         title="Vendas"
         subtitle={`${stats.count} venda(s) • ${brl(stats.total)}`}
         right={
-          <Dialog open={open} onOpenChange={setOpen}>
+          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setPrefillAnimalId(undefined); }}>
             <DialogTrigger asChild>
-              <Button size="lg" className="h-12">
+              <Button size="lg" className="h-12" onClick={() => setPrefillAnimalId(undefined)}>
                 <Plus className="h-4 w-4" /> Registrar
               </Button>
             </DialogTrigger>
-            <SaleFormDialog onDone={() => setOpen(false)} />
+            {open && (
+              <SaleFormDialog
+                key={prefillAnimalId ?? "new"}
+                prefillAnimalId={prefillAnimalId}
+                onDone={() => { setOpen(false); setPrefillAnimalId(undefined); }}
+              />
+            )}
           </Dialog>
         }
       />
