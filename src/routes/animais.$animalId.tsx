@@ -64,7 +64,9 @@ type EventType =
   | "medicamento"
   | "reproducao"
   | "mortalidade"
-  | "observacao";
+  | "observacao"
+  | "venda"
+  | "cadastro";
 
 const EVENT_META: Record<
   EventType,
@@ -77,6 +79,8 @@ const EVENT_META: Record<
   reproducao: { label: "Reprodução", icon: Heart, color: "text-pink-600" },
   mortalidade: { label: "Mortalidade", icon: Skull, color: "text-destructive" },
   observacao: { label: "Observação", icon: StickyNote, color: "text-muted-foreground" },
+  venda: { label: "Venda", icon: TrendingUp, color: "text-primary" },
+  cadastro: { label: "Cadastro", icon: StickyNote, color: "text-muted-foreground" },
 };
 
 const brl = (v: number) =>
