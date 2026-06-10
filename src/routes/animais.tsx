@@ -194,22 +194,15 @@ function Animals() {
                       </div>
                     </Link>
                     <div className="flex flex-col items-center gap-1">
-                      <Link
-                        to="/animais/$animalId"
-                        params={{ animalId: a.id }}
-                        className="text-muted-foreground hover:text-primary"
-                        aria-label="Ver detalhes"
-                      >
-                        <ChevronRight className="h-5 w-5" />
-                      </Link>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (confirm("Remover este animal?")) remove.mutate(a.id);
+                          setRemoveTarget(a);
                         }}
                         className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        aria-label="Remover animal"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
