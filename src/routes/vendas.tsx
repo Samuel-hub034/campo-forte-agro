@@ -128,13 +128,27 @@ function inPeriod(dateStr: string, period: PeriodKey) {
 function Sales() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const searchParams = Route.useSearch();
   const [open, setOpen] = useState(false);
+  const [prefillAnimalId, setPrefillAnimalId] = useState<string | undefined>(undefined);
   const [editing, setEditing] = useState<SaleRow | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<SaleRow | null>(null);
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("todas");
   const [period, setPeriod] = useState<PeriodKey>("todos");
+
+  // React to navigation from Rebanho with ?animalId=...&novo=1
+  useEffect(() => {
+    if (searchParams.novo || searchParams.animalId) {
+      setPrefillAnimalId(searchParams.animalId);
+      setOpen(true);
+      // clear params so reopening doesn't re-trigger
+      navigate({ to: "/vendas", search: {}, replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.animalId, searchParams.novo]);
 
   const { data: sales = [], isLoading } = useQuery({
     queryKey: ["sales", user?.id],
