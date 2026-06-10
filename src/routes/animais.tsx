@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -10,7 +10,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -28,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Beef, Trash2, Receipt, Search, ChevronRight } from "lucide-react";
+import { Plus, Beef, Trash2, Receipt, Search, Skull, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { ANIMAL_TYPES, getBreedsForSpecies } from "@/lib/breeds";
@@ -50,9 +53,12 @@ const brl = (v: number) =>
 function Animals() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("ativos");
   const [search, setSearch] = useState("");
+  const [removeTarget, setRemoveTarget] = useState<any | null>(null);
+  const [deathTarget, setDeathTarget] = useState<any | null>(null);
 
   const { data: animals = [], isLoading } = useQuery({
     queryKey: ["animals", user?.id],
@@ -81,16 +87,6 @@ function Animals() {
     },
   });
 
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("animals").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Animal removido");
-      qc.invalidateQueries({ queryKey: ["animals"] });
-    },
-  });
 
   const q = search.trim().toLowerCase();
   const filteredAnimals = animals.filter(
@@ -188,22 +184,15 @@ function Animals() {
                       </div>
                     </Link>
                     <div className="flex flex-col items-center gap-1">
-                      <Link
-                        to="/animais/$animalId"
-                        params={{ animalId: a.id }}
-                        className="text-muted-foreground hover:text-primary"
-                        aria-label="Ver detalhes"
-                      >
-                        <ChevronRight className="h-5 w-5" />
-                      </Link>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (confirm("Remover este animal?")) remove.mutate(a.id);
+                          setRemoveTarget(a);
                         }}
                         className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        aria-label="Remover animal"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -263,7 +252,164 @@ function Animals() {
           )}
         </TabsContent>
       </Tabs>
+
+      <RemoveReasonDialog
+        animal={removeTarget}
+        onClose={() => setRemoveTarget(null)}
+        onChooseSale={(a) => {
+          setRemoveTarget(null);
+          navigate({ to: "/vendas", search: { animalId: a.id, novo: 1 } as any });
+        }}
+        onChooseDeath={(a) => {
+          setRemoveTarget(null);
+          setDeathTarget(a);
+        }}
+      />
+
+      <DeathDialog
+        animal={deathTarget}
+        onClose={() => setDeathTarget(null)}
+        onDone={() => {
+          setDeathTarget(null);
+          qc.invalidateQueries({ queryKey: ["animals"] });
+          qc.invalidateQueries({ queryKey: ["dashboard"] });
+        }}
+      />
     </div>
+  );
+}
+
+function RemoveReasonDialog({
+  animal,
+  onClose,
+  onChooseSale,
+  onChooseDeath,
+}: {
+  animal: any | null;
+  onClose: () => void;
+  onChooseSale: (a: any) => void;
+  onChooseDeath: (a: any) => void;
+}) {
+  const [reason, setReason] = useState<"venda" | "morte" | "">("");
+  return (
+    <Dialog open={!!animal} onOpenChange={(v) => { if (!v) { setReason(""); onClose(); } }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Motivo da remoção</DialogTitle>
+          <DialogDescription>
+            {animal && (
+              <>Para manter o histórico, escolha o motivo de remover <strong>{animal.identifier || "este animal"}</strong>.</>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+        <RadioGroup value={reason} onValueChange={(v) => setReason(v as any)} className="gap-3">
+          <label className="flex items-center gap-3 rounded-xl border p-3 cursor-pointer hover:bg-accent">
+            <RadioGroupItem value="venda" id="r-venda" />
+            <ShoppingCart className="h-5 w-5 text-primary" />
+            <div>
+              <div className="font-medium">Venda</div>
+              <div className="text-xs text-muted-foreground">Abre o formulário de venda com os dados do animal</div>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 rounded-xl border p-3 cursor-pointer hover:bg-accent">
+            <RadioGroupItem value="morte" id="r-morte" />
+            <Skull className="h-5 w-5 text-destructive" />
+            <div>
+              <div className="font-medium">Morte</div>
+              <div className="text-xs text-muted-foreground">Registra data, motivo e move para óbitos</div>
+            </div>
+          </label>
+        </RadioGroup>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { setReason(""); onClose(); }}>Cancelar</Button>
+          <Button
+            disabled={!reason || !animal}
+            onClick={() => {
+              if (!animal) return;
+              if (reason === "venda") onChooseSale(animal);
+              else if (reason === "morte") onChooseDeath(animal);
+              setReason("");
+            }}
+          >
+            Continuar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DeathDialog({
+  animal,
+  onClose,
+  onDone,
+}: {
+  animal: any | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const { user } = useAuth();
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [reason, setReason] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const submit = useMutation({
+    mutationFn: async () => {
+      if (!user || !animal) throw new Error("Sem sessão");
+      if (!reason.trim()) throw new Error("Informe o motivo da morte");
+      const { error } = await supabase.from("animal_events").insert({
+        user_id: user.id,
+        animal_id: animal.id,
+        event_type: "mortalidade",
+        event_date: date,
+        title: `Morte: ${reason.trim()}`,
+        description: notes.trim() || null,
+        data: { reason: reason.trim(), recorded_by: user.id },
+      });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Óbito registrado");
+      setReason(""); setNotes(""); setDate(new Date().toISOString().slice(0, 10));
+      onDone();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open={!!animal} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Registrar óbito</DialogTitle>
+          <DialogDescription>
+            {animal && <>Animal: <strong>{animal.identifier || animal.type}</strong></>}
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          onSubmit={(e) => { e.preventDefault(); submit.mutate(); }}
+          className="space-y-3"
+        >
+          <div className="space-y-1.5">
+            <Label>Data da morte *</Label>
+            <Input type="date" className="h-11" value={date} onChange={(e) => setDate(e.target.value)} required />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Motivo *</Label>
+            <Input className="h-11" value={reason} onChange={(e) => setReason(e.target.value)} maxLength={120} placeholder="Doença, acidente, predador..." required />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Observações</Label>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Detalhes adicionais..." />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button type="submit" className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={submit.isPending}>
+              {submit.isPending ? "Salvando..." : "Confirmar óbito"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
