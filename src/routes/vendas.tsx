@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
 import { RequireAuth } from "@/components/RequireAuth";
@@ -50,7 +51,13 @@ import {
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 
+const searchSchema = z.object({
+  animalId: z.string().optional(),
+  novo: z.coerce.number().optional(),
+});
+
 export const Route = createFileRoute("/vendas")({
+  validateSearch: (s) => searchSchema.parse(s),
   component: () => (
     <RequireAuth>
       <AppShell>
