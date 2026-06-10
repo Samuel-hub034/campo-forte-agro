@@ -469,17 +469,44 @@ function StatCard({
   );
 }
 
+type ActiveAnimal = {
+  id: string;
+  identifier: string | null;
+  type: string;
+  breed: string | null;
+  weight_kg: number | null;
+  lote: string | null;
+  status: string;
+};
+
+function animalLabel(a: ActiveAnimal) {
+  const parts = [
+    a.identifier ? `${a.identifier}` : "Sem brinco",
+    a.type,
+    a.breed,
+    a.weight_kg ? `${a.weight_kg}kg` : null,
+    a.lote ? `Lote ${a.lote}` : null,
+  ].filter(Boolean);
+  return parts.join(" • ");
+}
+
 function SaleFormDialog({
   onDone,
   initial,
+  prefillAnimalId,
 }: {
   onDone: () => void;
   initial?: SaleRow;
+  prefillAnimalId?: string;
 }) {
   const { user } = useAuth();
   const qc = useQueryClient();
+
+  const initialCategory = initial?.category ?? (prefillAnimalId ? "animal" : "animal");
+
   const [form, setForm] = useState({
-    category: initial?.category ?? "animal",
+    category: initialCategory,
+    animalId: prefillAnimalId ?? "",
     item: initial?.item ?? "",
     quantity: String(initial?.quantity ?? "1"),
     unit: initial?.unit ?? "cabeça",
@@ -488,24 +515,81 @@ function SaleFormDialog({
     buyer: initial?.buyer ?? "",
     notes: initial?.notes ?? "",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const { data: activeAnimals = [] } = useQuery({
+    queryKey: ["active-animals", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("animals")
+        .select("id,identifier,type,breed,weight_kg,lote,status")
+        .eq("status", "ativo")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as ActiveAnimal[];
+    },
+  });
+
+  // Prefill item info from selected animal
+  useEffect(() => {
+    if (form.category !== "animal" || !form.animalId) return;
+    const a = activeAnimals.find((x) => x.id === form.animalId);
+    if (a) {
+      setForm((f) => ({
+        ...f,
+        item: animalLabel(a),
+        unit: "cabeça",
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.animalId, activeAnimals.length]);
 
   const total =
     (Number(form.quantity) || 0) * (Number(form.unit_price) || 0);
 
+  const validate = (): boolean => {
+    const errs: Record<string, string> = {};
+    if (!form.category) errs.category = "Categoria obrigatória";
+    if (form.category === "animal") {
+      if (!form.animalId) errs.animalId = "Selecione um animal do rebanho";
+      else {
+        const a = activeAnimals.find((x) => x.id === form.animalId);
+        if (!a) errs.animalId = "Animal não encontrado ou já vendido";
+        else if (a.status !== "ativo") errs.animalId = "Animal não está ativo";
+      }
+    } else {
+      if (!form.item.trim()) errs.item = "Produto obrigatório";
+    }
+    if (!form.buyer.trim()) errs.buyer = "Comprador obrigatório";
+    if (!(Number(form.quantity) > 0)) errs.quantity = "Quantidade deve ser maior que zero";
+    if (!(Number(form.unit_price) > 0)) errs.unit_price = "Valor deve ser maior que zero";
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const save = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Sem sessão");
+      if (!validate()) throw new Error("Corrija os campos destacados");
+
+      const itemText =
+        form.category === "animal"
+          ? animalLabel(activeAnimals.find((x) => x.id === form.animalId)!)
+          : form.item.trim();
+
       const payload = {
         category: form.category,
-        item: form.item,
+        item: itemText,
         quantity: Number(form.quantity),
-        unit: form.unit,
+        unit: form.unit || null,
         unit_price: Number(form.unit_price),
         total,
         sale_date: form.sale_date,
-        buyer: form.buyer || null,
-        notes: form.notes || null,
+        buyer: form.buyer.trim(),
+        notes: form.notes.trim() || null,
       };
+
       if (initial) {
         const { data, error } = await supabase
           .from("sales")
@@ -516,20 +600,55 @@ function SaleFormDialog({
         if (!data || data.length === 0)
           throw new Error("Venda não atualizada (sem permissão).");
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from("sales")
-          .insert({ ...payload, user_id: user.id });
+          .insert({ ...payload, user_id: user.id })
+          .select("id")
+          .single();
         if (error) throw new Error(error.message);
+
+        // For animal sales, log venda event (trigger marks animal as vendido)
+        if (form.category === "animal" && form.animalId) {
+          const { error: evErr } = await supabase.from("animal_events").insert({
+            user_id: user.id,
+            animal_id: form.animalId,
+            event_type: "venda",
+            event_date: form.sale_date,
+            title: `Venda para ${payload.buyer}`,
+            description: payload.notes ?? null,
+            cost: payload.total,
+            data: { sale_id: inserted?.id, buyer: payload.buyer, total: payload.total },
+          });
+          if (evErr) throw new Error(evErr.message);
+        }
       }
     },
     onSuccess: () => {
       toast.success(initial ? "Venda atualizada" : "Venda registrada");
       qc.invalidateQueries({ queryKey: ["sales"] });
+      qc.invalidateQueries({ queryKey: ["sales-animals"] });
+      qc.invalidateQueries({ queryKey: ["animals"] });
+      qc.invalidateQueries({ queryKey: ["active-animals"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
+      // Reset form
+      setForm({
+        category: "animal",
+        animalId: "",
+        item: "",
+        quantity: "1",
+        unit: "cabeça",
+        unit_price: "",
+        sale_date: new Date().toISOString().slice(0, 10),
+        buyer: "",
+        notes: "",
+      });
+      setErrors({});
       onDone();
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const err = (k: string) => errors[k] ? "border-destructive focus-visible:ring-destructive" : "";
 
   return (
     <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
@@ -537,21 +656,20 @@ function SaleFormDialog({
         <DialogTitle>{initial ? "Editar venda" : "Registrar venda"}</DialogTitle>
       </DialogHeader>
       <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          save.mutate();
-        }}
+        onSubmit={(e) => { e.preventDefault(); save.mutate(); }}
         className="space-y-3"
       >
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label>Categoria</Label>
+            <Label>Categoria *</Label>
             <Select
               value={form.category}
               onValueChange={(v) =>
-                setForm({
-                  ...form,
+                setForm((f) => ({
+                  ...f,
                   category: v,
+                  animalId: v === "animal" ? f.animalId : "",
+                  item: v === "animal" ? "" : f.item,
                   unit:
                     !initial
                       ? v === "animal"
@@ -561,11 +679,11 @@ function SaleFormDialog({
                           : v === "leite"
                             ? "litro"
                             : "un"
-                      : form.unit,
-                })
+                      : f.unit,
+                }))
               }
             >
-              <SelectTrigger className="h-11">
+              <SelectTrigger className={`h-11 ${err("category")}`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -578,7 +696,7 @@ function SaleFormDialog({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Data</Label>
+            <Label>Data *</Label>
             <Input
               className="h-11"
               type="date"
@@ -587,27 +705,56 @@ function SaleFormDialog({
             />
           </div>
         </div>
-        <div className="space-y-1.5">
-          <Label>Item</Label>
-          <Input
-            className="h-11"
-            required
-            value={form.item}
-            onChange={(e) => setForm({ ...form, item: e.target.value })}
-            placeholder="Boi gordo, Soja, ..."
-          />
-        </div>
+
+        {form.category === "animal" ? (
+          <div className="space-y-1.5">
+            <Label>Selecionar animal *</Label>
+            <Select
+              value={form.animalId}
+              onValueChange={(v) => setForm({ ...form, animalId: v })}
+            >
+              <SelectTrigger className={`h-11 ${err("animalId")}`}>
+                <SelectValue placeholder={activeAnimals.length ? "Escolha um animal ativo" : "Nenhum animal ativo no rebanho"} />
+              </SelectTrigger>
+              <SelectContent>
+                {activeAnimals.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {animalLabel(a)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.animalId && <p className="text-xs text-destructive">{errors.animalId}</p>}
+            {activeAnimals.length === 0 && (
+              <p className="text-xs text-muted-foreground">Cadastre um animal no Rebanho antes de registrar a venda.</p>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <Label>Produto *</Label>
+            <Input
+              className={`h-11 ${err("item")}`}
+              value={form.item}
+              onChange={(e) => setForm({ ...form, item: e.target.value })}
+              placeholder="Soja, milho, leite..."
+              maxLength={120}
+            />
+            {errors.item && <p className="text-xs text-destructive">{errors.item}</p>}
+          </div>
+        )}
+
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1.5">
-            <Label>Qtd</Label>
+            <Label>Qtd *</Label>
             <Input
-              className="h-11"
+              className={`h-11 ${err("quantity")}`}
               type="number"
               step="0.01"
-              required
+              min="0.01"
               value={form.quantity}
               onChange={(e) => setForm({ ...form, quantity: e.target.value })}
             />
+            {errors.quantity && <p className="text-xs text-destructive">{errors.quantity}</p>}
           </div>
           <div className="space-y-1.5">
             <Label>Unidade</Label>
@@ -615,44 +762,49 @@ function SaleFormDialog({
               className="h-11"
               value={form.unit}
               onChange={(e) => setForm({ ...form, unit: e.target.value })}
+              disabled={form.category === "animal"}
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Preço unit.</Label>
+            <Label>Preço unit. *</Label>
             <Input
-              className="h-11"
+              className={`h-11 ${err("unit_price")}`}
               type="number"
               step="0.01"
-              required
+              min="0.01"
               value={form.unit_price}
-              onChange={(e) =>
-                setForm({ ...form, unit_price: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, unit_price: e.target.value })}
             />
+            {errors.unit_price && <p className="text-xs text-destructive">{errors.unit_price}</p>}
           </div>
         </div>
+
         <div className="space-y-1.5">
-          <Label>Comprador (opcional)</Label>
+          <Label>Comprador *</Label>
           <Input
-            className="h-11"
+            className={`h-11 ${err("buyer")}`}
             value={form.buyer}
             onChange={(e) => setForm({ ...form, buyer: e.target.value })}
+            maxLength={120}
           />
+          {errors.buyer && <p className="text-xs text-destructive">{errors.buyer}</p>}
         </div>
+
         <div className="space-y-1.5">
           <Label>Observações (opcional)</Label>
           <Textarea
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
             placeholder="Notas sobre a venda..."
+            maxLength={500}
           />
         </div>
+
         <div className="rounded-lg bg-accent p-3 text-center">
           <div className="text-xs text-accent-foreground/70">Total</div>
-          <div className="text-2xl font-bold text-accent-foreground">
-            {brl(total)}
-          </div>
+          <div className="text-2xl font-bold text-accent-foreground">{brl(total)}</div>
         </div>
+
         <DialogFooter>
           <Button type="submit" className="h-11 w-full" disabled={save.isPending}>
             {save.isPending
