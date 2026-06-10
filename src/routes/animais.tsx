@@ -87,16 +87,6 @@ function Animals() {
     },
   });
 
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("animals").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Animal removido");
-      qc.invalidateQueries({ queryKey: ["animals"] });
-    },
-  });
 
   const q = search.trim().toLowerCase();
   const filteredAnimals = animals.filter(
