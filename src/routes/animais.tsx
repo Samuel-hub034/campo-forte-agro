@@ -53,9 +53,12 @@ const brl = (v: number) =>
 function Animals() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("ativos");
   const [search, setSearch] = useState("");
+  const [removeTarget, setRemoveTarget] = useState<any | null>(null);
+  const [deathTarget, setDeathTarget] = useState<any | null>(null);
 
   const { data: animals = [], isLoading } = useQuery({
     queryKey: ["animals", user?.id],
